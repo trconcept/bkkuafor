@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+data/appointments.json
+data/*.tmp
+# Source-only media/archive files; the deployable copies are in public/.
+KERASTASE/
+Kérastase Videolar/
+*.pdf

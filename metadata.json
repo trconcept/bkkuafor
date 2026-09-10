@@ -1,0 +1,6 @@
+{
+  "name": "Bayan Kuaförü ve Yönetim Paneli",
+  "description": "L'Étoile Coiffure usta stilistleri, kategorili lüks saç ve güzellik hizmetleri, online randevu sihirbazı, randevu takip sorgulaması ve istatistik analitiği, canlı işlem onayları, fiyat kataloğu düzenleyicisi barındıran gelişmiş yönetim paneli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

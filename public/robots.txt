@@ -1,0 +1,43 @@
+# Robots.txt for BK Kuaför & Beauty Portal
+# Configured for Google, Bing, and AI Search Engines (ChatGPT, Perplexity, Claude, Gemini, Copilot)
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# Google Search & Google AI
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# OpenAI ChatGPT & GPTBot
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic Claude & ClaudeBot
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity AI Search
+User-agent: PerplexityBot
+Allow: /
+
+# Microsoft Bing & Copilot
+User-agent: Bingbot
+Allow: /
+
+# Common Crawl & Other AI Crawlers
+User-agent: CCBot
+Allow: /
+
+# Sitemap Index
+Sitemap: https://bkkuafor.com/sitemap.xml
