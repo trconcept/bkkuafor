@@ -2418,7 +2418,7 @@ export default function AdminDashboard({
                       <label className="text-[10px] text-gray-500 font-mono block">Hizmet Görseli</label>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
-                          type="url"
+                          type="text"
                           placeholder="Görsel URL'si"
                           value={srvImage}
                           onChange={(e) => setSrvImage(e.target.value)}
@@ -2532,7 +2532,7 @@ export default function AdminDashboard({
                       <label className="text-[10px] text-gray-500 font-mono block">Hizmet Görseli</label>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input
-                          type="url"
+                          type="text"
                           placeholder="Görsel URL'si veya dosya seçin"
                           value={editSrvImage}
                           onChange={(e) => setEditSrvImage(e.target.value)}
