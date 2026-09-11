@@ -143,7 +143,7 @@ const validateBookingAgainstAbuseRules = (input: {
 };
 
 export default function App() {
-  const serviceImageFallback = '/fiyat-tarifesi.jpg';
+  const serviceImageFallback = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop';
   const sanitizeServices = (items: SalonService[]): SalonService[] =>
     items.map((service) => ({
       ...service,

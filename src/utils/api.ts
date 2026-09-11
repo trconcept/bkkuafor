@@ -42,6 +42,12 @@ export const replaceAdminBlockedPhones = (blockedPhones: string[]) =>
     body: JSON.stringify({ blockedPhones })
   });
 
+export const uploadAdminMedia = (dataUrl: string) =>
+  request<{ ok: true; url: string }>('/api/admin/media', {
+    method: 'POST',
+    body: JSON.stringify({ dataUrl })
+  });
+
 export const createAppointment = (appointment: Record<string, unknown>) =>
   request<{ ok: true; appointment: Appointment }>('/api/appointments', {
     method: 'POST',

@@ -68,7 +68,7 @@ export default function ServiceCard({
           referrerPolicy="no-referrer"
           onError={(event) => {
             event.currentTarget.onerror = null;
-            event.currentTarget.src = '/fiyat-tarifesi.jpg';
+            event.currentTarget.src = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop';
           }}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

@@ -13,6 +13,7 @@ import {
   WebContent, KerastaseProduct, BlogPost, SocialLinks, WebFaq 
 } from '../types';
 import { normalizeTurkishMobilePhone } from '../utils/phone';
+import { uploadAdminMedia } from '../utils/api';
 
 interface AdminDashboardProps {
   services: SalonService[];
@@ -356,22 +357,10 @@ export default function AdminDashboard({
 
   // File Upload Helper
   const handleLogoFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      alert('Logo boyutu 3MB üzerinde olmamalıdır.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setEditedSalonLogoUrl(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    void readImageFile(e, setEditedSalonLogoUrl);
   };
 
-  const readImageFile = (e: ChangeEvent<HTMLInputElement>, onLoaded: (value: string) => void) => {
+  const readImageFile = async (e: ChangeEvent<HTMLInputElement>, onLoaded: (value: string) => void | Promise<void>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -384,7 +373,7 @@ export default function AdminDashboard({
     }
 
     const image = new window.Image();
-    image.onload = () => {
+    image.onload = async () => {
       const maxWidth = 1000;
       const maxHeight = 750;
       const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
@@ -397,7 +386,12 @@ export default function AdminDashboard({
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      onLoaded(canvas.toDataURL('image/jpeg', 0.78));
+      try {
+        const result = await uploadAdminMedia(canvas.toDataURL('image/jpeg', 0.78));
+        await onLoaded(result.url);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Görsel sunucuya yüklenemedi.');
+      }
     };
     image.onerror = () => alert('Görsel okunamadı. Lütfen farklı bir dosya deneyin.');
     image.src = URL.createObjectURL(file);
@@ -2443,7 +2437,7 @@ export default function AdminDashboard({
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => readImageFile(e, setSrvImage)}
+                            onChange={(e) => { void readImageFile(e, setSrvImage); }}
                             className="hidden"
                           />
                         </label>
@@ -2557,7 +2551,7 @@ export default function AdminDashboard({
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => readImageFile(e, setEditSrvImage)}
+                            onChange={(e) => { void readImageFile(e, setEditSrvImage); }}
                             className="hidden"
                           />
                         </label>

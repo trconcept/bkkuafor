@@ -229,6 +229,16 @@ const ensureSchema = async () => {
       KEY idx_blocked_phone_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS uploaded_media (
+      id CHAR(32) NOT NULL PRIMARY KEY,
+      mime_type VARCHAR(32) NOT NULL,
+      media_data MEDIUMBLOB NOT NULL,
+      created_by VARCHAR(80) NOT NULL,
+      created_at DATETIME NOT NULL,
+      KEY idx_uploaded_media_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 };
 
 const serialiseJson = (value: unknown) => JSON.stringify(value);
@@ -397,7 +407,7 @@ app.use((_, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   next();
 });
-app.use(express.json({ limit: '32kb', strict: true }));
+app.use(express.json({ limit: '8mb', strict: true }));
 
 app.get('/api/health', async (_, res) => {
   try {
@@ -558,6 +568,47 @@ app.put('/api/admin/blocked-phones', requireAdmin, async (req, res, next) => {
       connection.release();
     }
     return res.json({ ok: true, blockedPhones: await getBlockedPhones() });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/admin/media', requireAdmin, async (req, res, next) => {
+  try {
+    if (!isRecord(req.body) || typeof req.body.dataUrl !== 'string') {
+      return jsonError(res, 400, 'Geçerli bir görsel gönderilmedi.');
+    }
+
+    const match = req.body.dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/u);
+    if (!match) return jsonError(res, 400, 'Yalnızca JPG, PNG, WEBP veya GIF görselleri yüklenebilir.');
+
+    const data = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
+    if (!data.length || data.length > 5 * 1024 * 1024) {
+      return jsonError(res, 400, 'Görsel 5MB üzerinde olmamalıdır.');
+    }
+
+    const id = crypto.randomBytes(16).toString('hex');
+    await getPool().execute(
+      'INSERT INTO uploaded_media (id, mime_type, media_data, created_by, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
+      [id, match[1], data, String(res.locals.adminUsername)]
+    );
+    return res.status(201).json({ ok: true, url: `/api/media/${id}` });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/api/media/:id', async (req, res, next) => {
+  try {
+    if (!/^[a-f0-9]{32}$/u.test(req.params.id)) return jsonError(res, 404, 'Görsel bulunamadı.');
+    const [rows] = await getPool().execute<DbRow[]>(
+      'SELECT mime_type, media_data FROM uploaded_media WHERE id = ? LIMIT 1',
+      [req.params.id]
+    );
+    if (!rows[0] || !Buffer.isBuffer(rows[0].media_data)) return jsonError(res, 404, 'Görsel bulunamadı.');
+    res.setHeader('Content-Type', String(rows[0].mime_type));
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(rows[0].media_data);
   } catch (error) {
     return next(error);
   }
