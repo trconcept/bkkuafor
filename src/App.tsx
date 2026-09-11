@@ -152,11 +152,30 @@ export default function App() {
 
   const normalizeWebContent = (content: WebContent): WebContent => ({
     ...content,
+    galleryItems: (content.galleryItems || []).map((item) => ({
+      ...item,
+      src: item.src.startsWith('data:') ? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop' : item.src,
+      videoUrl: item.videoUrl?.startsWith('data:') ? undefined : item.videoUrl,
+    })),
     showcaseSubtitle: content.showcaseSubtitle === '2026 Menü Seçkisi' ? 'Menü Seçkisi' : content.showcaseSubtitle,
     footerCopyrightAndAddress: content.footerCopyrightAndAddress === '© 2026 BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
       ? 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
       : content.footerCopyrightAndAddress,
   });
+  const getYoutubeEmbedUrl = (value?: string) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      if (url.hostname === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.slice(1)}`;
+      if (url.hostname.endsWith('youtube.com')) {
+        const id = url.searchParams.get('v') || url.pathname.match(/\/shorts\/([^/]+)/u)?.[1] || url.pathname.match(/\/embed\/([^/]+)/u)?.[1];
+        return id ? `https://www.youtube.com/embed/${id}` : '';
+      }
+    } catch {
+      return '';
+    }
+    return '';
+  };
 
   const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<SalonService | null>(null);
@@ -1323,6 +1342,7 @@ export default function App() {
 
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-[180px]">
                   {(webContent.galleryItems || []).map((item, idx) => {
+                    const youtubeUrl = getYoutubeEmbedUrl(item.videoUrl || item.src);
                     const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
                     const layoutClass = idx === 0
                       ? 'md:col-span-5 md:row-span-2'
@@ -1339,7 +1359,15 @@ export default function App() {
                         key={`${item.title}-${idx}`}
                         className={`group relative overflow-hidden rounded-[1.6rem] border border-[#d8d0bd] bg-[#0f0f11] shadow-[0_18px_40px_rgba(15,15,17,0.14)] ${layoutClass}`}
                       >
-                        {isVideo ? (
+                        {youtubeUrl ? (
+                          <iframe
+                            src={youtubeUrl}
+                            title={item.title}
+                            className="h-full w-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        ) : isVideo ? (
                           <video
                             src={item.videoUrl || item.src}
                             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"

@@ -937,11 +937,24 @@ export default function AdminDashboard({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setGalleryItemSrc(reader.result);
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') return;
+      try {
+        const result = await uploadAdminMedia(reader.result);
+        setGalleryItemSrc(result.url);
+        if (file.type.startsWith('video/')) setGalleryItemVideoUrl(result.url);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Galeri dosyası sunucuya yüklenemedi.');
       }
     };
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      alert('Lütfen görsel veya video dosyası seçin.');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Görsel veya video 15MB üzerinde olmamalıdır.');
+      return;
+    }
     reader.readAsDataURL(file);
   };
 
@@ -3631,7 +3644,7 @@ export default function AdminDashboard({
                 <div className="sm:col-span-2">
                   <label className="text-[10px] text-gray-500 font-mono block">Görsel veya Video URL</label>
                   <div className="flex gap-2 items-center">
-                    <input type="url" value={galleryItemSrc} onChange={(e) => setGalleryItemSrc(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" />
+                  <input type="url" value={galleryItemSrc} onChange={(e) => setGalleryItemSrc(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" placeholder="Görsel URL'si veya video küçük görseli" />
                     <label className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0">
                       <Upload className="h-4 w-4" />
                       <input type="file" accept="image/*,video/*" onChange={handleGalleryItemFileUpload} className="hidden" />
@@ -3641,8 +3654,9 @@ export default function AdminDashboard({
 
                 {galleryItemMediaType === 'video' && (
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] text-gray-500 font-mono block">Video URL (opsiyonel)</label>
-                    <input type="url" value={galleryItemVideoUrl} onChange={(e) => setGalleryItemVideoUrl(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" />
+                    <label className="text-[10px] text-gray-500 font-mono block">Video URL (YouTube veya doğrudan video bağlantısı)</label>
+                    <input type="url" value={galleryItemVideoUrl} onChange={(e) => setGalleryItemVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... veya .mp4" className="w-full border border-gray-200 rounded-xl p-2.5" />
+                    <p className="text-[10px] text-gray-400 mt-1">Bilgisayardan video seçebilir veya YouTube bağlantısı yapıştırabilirsiniz.</p>
                   </div>
                 )}
               </div>
@@ -3658,7 +3672,11 @@ export default function AdminDashboard({
               <h5 className="font-sans font-black text-sm text-gray-900">Mevcut Galeri İçerikleri</h5>
               {(webContent.galleryItems || []).map((item, index) => (
                 <div key={`${item.title}-${index}`} className="flex items-center gap-3 border border-gray-200 rounded-xl p-3">
-                  <img src={item.src} alt={item.title} className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                  {item.mediaType === 'video' ? (
+                    <video src={item.videoUrl || item.src} muted className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                  ) : (
+                    <img src={item.src} alt={item.title} className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-sans font-black text-xs text-gray-900 truncate">{item.title}</p>
                     <p className="text-[10px] text-gray-500 font-mono">{item.mediaType === 'video' ? 'Video' : 'Resim'}</p>

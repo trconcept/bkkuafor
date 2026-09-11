@@ -341,7 +341,7 @@ app.use((_, res, next) => {
     res.setHeader('Referrer-Policy', 'same-origin');
     next();
 });
-app.use(express.json({ limit: '8mb', strict: true }));
+app.use(express.json({ limit: '20mb', strict: true }));
 app.get('/api/health', async (_, res) => {
     try {
         await getPool().query('SELECT 1');
@@ -492,12 +492,12 @@ app.post('/api/admin/media', requireAdmin, async (req, res, next) => {
         if (!isRecord(req.body) || typeof req.body.dataUrl !== 'string') {
             return jsonError(res, 400, 'Geçerli bir görsel gönderilmedi.');
         }
-        const match = req.body.dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/u);
+        const match = req.body.dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif)|video\/(?:mp4|webm|ogg));base64,([A-Za-z0-9+/=\s]+)$/u);
         if (!match)
-            return jsonError(res, 400, 'Yalnızca JPG, PNG, WEBP veya GIF görselleri yüklenebilir.');
+            return jsonError(res, 400, 'JPG, PNG, WEBP, GIF, MP4, WEBM veya OGG dosyası yükleyebilirsiniz.');
         const data = Buffer.from(match[2].replace(/\s/g, ''), 'base64');
-        if (!data.length || data.length > 5 * 1024 * 1024) {
-            return jsonError(res, 400, 'Görsel 5MB üzerinde olmamalıdır.');
+        if (!data.length || data.length > 15 * 1024 * 1024) {
+            return jsonError(res, 400, 'Görsel veya video 15MB üzerinde olmamalıdır.');
         }
         const id = crypto.randomBytes(16).toString('hex');
         await getPool().execute('INSERT INTO uploaded_media (id, mime_type, media_data, created_by, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())', [id, match[1], data, String(res.locals.adminUsername)]);
