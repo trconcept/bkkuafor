@@ -4,7 +4,7 @@ import {
   Scissors, Calendar, Clock, Lock, Sparkles, Phone, ShieldCheck, 
   Mail, ArrowRight, Star, Heart, CheckCircle, HelpCircle, MapPin,
   MessageCircle, Navigation, Instagram, Facebook, Video, Twitter, ChevronDown,
-  BellRing
+  BellRing, X, ChevronLeft, ChevronRight, Play, Maximize2
 } from 'lucide-react';
 import Header from './components/Header';
 import ServiceCard from './components/ServiceCard';
@@ -150,26 +150,41 @@ export default function App() {
       image: service.image.startsWith('data:image/') ? serviceImageFallback : service.image,
     }));
 
-  const normalizeWebContent = (content: WebContent): WebContent => ({
-    ...content,
-    galleryItems: (content.galleryItems || []).map((item) => ({
-      ...item,
-      src: item.src.startsWith('data:') ? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop' : item.src,
-      videoUrl: item.videoUrl?.startsWith('data:') ? undefined : item.videoUrl,
-    })),
-    showcaseSubtitle: content.showcaseSubtitle === '2026 Menü Seçkisi' ? 'Menü Seçkisi' : content.showcaseSubtitle,
-    footerCopyrightAndAddress: content.footerCopyrightAndAddress === '© 2026 BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
-      ? 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
-      : content.footerCopyrightAndAddress,
-  });
-  const getYoutubeEmbedUrl = (value?: string) => {
+  const normalizeWebContent = (content: WebContent): WebContent => {
+    const defaultSocials = INITIAL_WEB_CONTENT.socialLinks || {};
+    const contentSocials = content.socialLinks || {};
+
+    return {
+      ...INITIAL_WEB_CONTENT,
+      ...content,
+      socialLinks: {
+        ...defaultSocials,
+        ...contentSocials,
+        instagram: (contentSocials.instagram && !contentSocials.instagram.includes('kerastase_official'))
+          ? contentSocials.instagram
+          : defaultSocials.instagram,
+      },
+      galleryItems: (content.galleryItems || INITIAL_WEB_CONTENT.galleryItems || []).map((item) => ({
+        ...item,
+        src: item.src.startsWith('data:') ? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop' : item.src,
+        videoUrl: item.videoUrl?.startsWith('data:') ? undefined : item.videoUrl,
+      })),
+      showcaseSubtitle: content.showcaseSubtitle === '2026 Menü Seçkisi' ? 'Menü Seçkisi' : content.showcaseSubtitle,
+      footerCopyrightAndAddress: content.footerCopyrightAndAddress === '© 2026 BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
+        ? 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
+        : content.footerCopyrightAndAddress,
+    };
+  };
+
+  const getYoutubeEmbedUrl = (value?: string, autoplay = false) => {
     if (!value) return '';
     try {
       const url = new URL(value);
-      if (url.hostname === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.slice(1)}`;
+      const autoParam = autoplay ? '?autoplay=1&rel=0' : '?rel=0';
+      if (url.hostname === 'youtu.be') return `https://www.youtube.com/embed/${url.pathname.slice(1)}${autoParam}`;
       if (url.hostname.endsWith('youtube.com')) {
         const id = url.searchParams.get('v') || url.pathname.match(/\/shorts\/([^/]+)/u)?.[1] || url.pathname.match(/\/embed\/([^/]+)/u)?.[1];
-        return id ? `https://www.youtube.com/embed/${id}` : '';
+        return id ? `https://www.youtube.com/embed/${id}${autoParam}` : '';
       }
     } catch {
       return '';
@@ -177,8 +192,24 @@ export default function App() {
     return '';
   };
 
+  const getYoutubeThumbnailUrl = (value?: string) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      let id = '';
+      if (url.hostname === 'youtu.be') id = url.pathname.slice(1);
+      else if (url.hostname.endsWith('youtube.com')) {
+        id = url.searchParams.get('v') || url.pathname.match(/\/shorts\/([^/]+)/u)?.[1] || url.pathname.match(/\/embed\/([^/]+)/u)?.[1] || '';
+      }
+      return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+    } catch {
+      return '';
+    }
+  };
+
   const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<SalonService | null>(null);
+  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
 
   // Secure admin token state
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -243,6 +274,22 @@ export default function App() {
     window.addEventListener('popstate', handleRouteSync);
     return () => window.removeEventListener('popstate', handleRouteSync);
   }, []);
+
+  // Keyboard listener for Gallery Lightbox navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedGalleryIndex === null) return;
+      if (e.key === 'Escape') {
+        setSelectedGalleryIndex(null);
+      } else if (e.key === 'ArrowLeft') {
+        setSelectedGalleryIndex((prev) => (prev === null || prev === 0 ? (webContent.galleryItems?.length || 1) - 1 : prev - 1));
+      } else if (e.key === 'ArrowRight') {
+        setSelectedGalleryIndex((prev) => (prev === null || prev >= (webContent.galleryItems?.length || 1) - 1 ? 0 : prev + 1));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedGalleryIndex, webContent.galleryItems]);
 
   const changeSectionWithUrl = (section: ActiveSection) => {
     setActiveSection(section);
@@ -1342,7 +1389,7 @@ export default function App() {
 
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-[180px]">
                   {(webContent.galleryItems || []).map((item, idx) => {
-                    const youtubeUrl = getYoutubeEmbedUrl(item.videoUrl || item.src);
+                    const ytThumb = getYoutubeThumbnailUrl(item.videoUrl || item.src);
                     const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
                     const layoutClass = idx === 0
                       ? 'md:col-span-5 md:row-span-2'
@@ -1354,24 +1401,18 @@ export default function App() {
                             ? 'md:col-span-6'
                             : 'md:col-span-3';
 
+                    const displayImg = ytThumb || item.src;
+
                     return (
                       <figure
                         key={`${item.title}-${idx}`}
-                        className={`group relative overflow-hidden rounded-[1.6rem] border border-[#d8d0bd] bg-[#0f0f11] shadow-[0_18px_40px_rgba(15,15,17,0.14)] ${layoutClass}`}
+                        onClick={() => setSelectedGalleryIndex(idx)}
+                        className={`group relative overflow-hidden rounded-[1.6rem] border border-[#d8d0bd] bg-[#0f0f11] shadow-[0_18px_40px_rgba(15,15,17,0.14)] cursor-pointer select-none ${layoutClass}`}
                       >
-                        {youtubeUrl ? (
-                          <iframe
-                            src={youtubeUrl}
-                            title={item.title}
-                            className="h-full w-full"
-                            referrerPolicy="strict-origin-when-cross-origin"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                          />
-                        ) : isVideo ? (
+                        {isVideo && !ytThumb && item.videoUrl && !item.videoUrl.includes('youtube.com') && !item.videoUrl.includes('youtu.be') ? (
                           <video
                             src={item.videoUrl || item.src}
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none"
                             muted
                             loop
                             playsInline
@@ -1379,18 +1420,37 @@ export default function App() {
                           />
                         ) : (
                           <img
-                            src={item.src}
+                            src={displayImg}
                             alt={item.title}
                             referrerPolicy="no-referrer"
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none"
                           />
                         )}
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11]/80 via-[#0f0f11]/15 to-transparent" />
-                        <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#f7f0dd] backdrop-blur-sm">
-                          {isVideo ? 'Video' : 'Portföy'}
+                        {/* Background Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11]/90 via-[#0f0f11]/25 to-transparent pointer-events-none" />
+
+                        {/* Hover Overlay Button */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] pointer-events-none z-20">
+                          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-[#0f0f11] font-black text-xs rounded-full shadow-lg transform group-hover:scale-105 transition-transform">
+                            {isVideo ? <Play className="h-4 w-4 fill-current" /> : <Maximize2 className="h-4 w-4" />}
+                            <span>{isVideo ? 'Oynat & İncele' : 'Büyüt'}</span>
+                          </div>
                         </div>
-                        <figcaption className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-5 text-left">
+
+                        {/* Top Category Badge */}
+                        <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#f7f0dd] backdrop-blur-sm pointer-events-none">
+                          {isVideo ? (
+                            <>
+                              <Play className="h-3 w-3 fill-current text-[#dfa069]" />
+                              <span>Video</span>
+                            </>
+                          ) : (
+                            'Portföy'
+                          )}
+                        </div>
+
+                        <figcaption className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-5 text-left pointer-events-none">
                           <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-[#f7f0dd] backdrop-blur-sm">
                             {idx + 1}
                           </span>
@@ -1403,6 +1463,123 @@ export default function App() {
                   })}
                 </div>
               </div>
+
+              {/* Gallery Lightbox Modal */}
+              <AnimatePresence>
+                {selectedGalleryIndex !== null && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-6"
+                    onClick={() => setSelectedGalleryIndex(null)}
+                  >
+                    <div
+                      className="relative w-full max-w-5xl bg-[#121217] border border-[#2d2d38] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Modal Header */}
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-[#22222b] bg-[#0b0b0e]">
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-[0.2em] bg-[#dfa069]/20 text-[#dfa069] border border-[#dfa069]/30">
+                            {webContent.galleryItems?.[selectedGalleryIndex]?.mediaType === 'video' || webContent.galleryItems?.[selectedGalleryIndex]?.videoUrl ? 'Video Portföy' : 'Görsel Portföy'}
+                          </span>
+                          <h3 className="font-sans font-black text-white text-sm sm:text-lg truncate max-w-xs sm:max-w-md">
+                            {webContent.galleryItems?.[selectedGalleryIndex]?.title}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => setSelectedGalleryIndex(null)}
+                          className="p-2 text-gray-400 hover:text-white bg-[#1a1a22] hover:bg-[#282835] rounded-xl transition-all cursor-pointer"
+                          title="Kapat (Esc)"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      {/* Modal Body / Media Viewport */}
+                      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[300px] max-h-[70vh]">
+                        {/* Prev Button */}
+                        {webContent.galleryItems && webContent.galleryItems.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGalleryIndex((prev) => (prev === null || prev === 0 ? webContent.galleryItems.length - 1 : prev - 1));
+                            }}
+                            className="absolute left-3 z-30 p-2.5 sm:p-3 bg-black/60 hover:bg-black/90 text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer"
+                            title="Önceki"
+                          >
+                            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+                          </button>
+                        )}
+
+                        {/* Media Player */}
+                        {(() => {
+                          const currentItem = webContent.galleryItems?.[selectedGalleryIndex];
+                          if (!currentItem) return null;
+
+                          const ytEmbedUrl = getYoutubeEmbedUrl(currentItem.videoUrl || currentItem.src, true);
+                          const isVid = currentItem.mediaType === 'video' || Boolean(currentItem.videoUrl);
+
+                          if (ytEmbedUrl) {
+                            return (
+                              <div className="w-full h-full aspect-video max-h-[68vh] flex items-center justify-center">
+                                <iframe
+                                  src={ytEmbedUrl}
+                                  title={currentItem.title}
+                                  className="w-full h-full border-0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              </div>
+                            );
+                          } else if (isVid) {
+                            return (
+                              <video
+                                src={currentItem.videoUrl || currentItem.src}
+                                className="max-w-full max-h-[68vh] object-contain"
+                                controls
+                                autoPlay
+                                playsInline
+                              />
+                            );
+                          } else {
+                            return (
+                              <img
+                                src={currentItem.src}
+                                alt={currentItem.title}
+                                className="max-w-full max-h-[68vh] object-contain"
+                              />
+                            );
+                          }
+                        })()}
+
+                        {/* Next Button */}
+                        {webContent.galleryItems && webContent.galleryItems.length > 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGalleryIndex((prev) => (prev === null || prev === webContent.galleryItems.length - 1 ? 0 : prev + 1));
+                            }}
+                            className="absolute right-3 z-30 p-2.5 sm:p-3 bg-black/60 hover:bg-black/90 text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer"
+                            title="Sonraki"
+                          >
+                            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="flex items-center justify-between px-5 py-3 border-t border-[#22222b] bg-[#0b0b0e] text-xs text-gray-400 font-mono">
+                        <span className="truncate">BK Kuaför & Beauty Sanat Galerisi</span>
+                        <span className="shrink-0 font-bold text-[#dfa069]">
+                          {selectedGalleryIndex + 1} / {webContent.galleryItems?.length || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 

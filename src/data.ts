@@ -1357,13 +1357,21 @@ export const INITIAL_WEB_CONTENT: WebContent = {
 
   // Social Media Links
   socialLinks: {
-    instagram: 'https://instagram.com/kerastase_official',
+    instagram: 'https://www.instagram.com/bkkuafor.official/',
+    instagramVisible: true,
     facebook: 'https://facebook.com',
+    facebookVisible: false,
     tiktok: 'https://tiktok.com',
+    tiktokVisible: false,
     youtube: 'https://youtube.com',
+    youtubeVisible: false,
     whatsapp: '+905527440585',
+    whatsappVisible: true,
     xTwitter: 'https://x.com',
-    pinterest: 'https://pinterest.com'
+    xTwitterVisible: false,
+    pinterest: 'https://pinterest.com',
+    pinterestVisible: false,
+    linkedinVisible: false
   },
 
   // WhatsApp and Google Maps
