@@ -324,7 +324,7 @@ export default function BookingWizard({
                         <div>
                           <h3 className="font-sans font-black text-xl text-gray-950 tracking-tight">Hizmet Seçimi Yapın</h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            2026 Fiyat Tarifesindeki tüm kuaför, bakım, tırnak, ağda ve solaryum işlemlerimiz ({services.length} Hizmet).
+                            Fiyat tarifemizdeki tüm kuaför, bakım, tırnak, ağda ve solaryum işlemlerimiz ({services.length} Hizmet).
                           </p>
                         </div>
 

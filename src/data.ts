@@ -1266,10 +1266,10 @@ export const INITIAL_WEB_CONTENT: WebContent = {
   features: [
     { title: 'Kérastase Yetkili Salonu', desc: 'Fransız lüks saç ritüelleri ve yapay zeka destekli K-SCAN saç analizi.' },
     { title: 'KVKK Uyumlu Güvenli Randevu', desc: 'Telefon numarası gerekmeden benzersiz takip kodu ile anında online rezervasyon.' },
-    { title: '2026 Resmi Fiyat Güvencesi', desc: 'İstanbul Kadın Kuaförleri Odası tarifesine uygun şeffaf ve esnek fiyatlandırma.' }
+    { title: 'Resmi Fiyat Güvencesi', desc: 'İstanbul Kadın Kuaförleri Odası tarifesine uygun şeffaf ve esnek fiyatlandırma.' }
   ],
   
-  showcaseSubtitle: '2026 Menü Seçkisi',
+  showcaseSubtitle: 'Menü Seçkisi',
   showcaseTitle: 'Öne Çıkan Hizmet ve Bakımlarımız',
   
   stylistsSubtitle: 'Sanatçılarımız',
@@ -1347,7 +1347,7 @@ export const INITIAL_WEB_CONTENT: WebContent = {
   
   footerPhone: '0(212) 243 20 20',
   footerWorkingHours: 'Pazartesi İzinli, Salı - Pazar: 09:00 - 19:30',
-  footerCopyrightAndAddress: '© 2026 BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.',
+  footerCopyrightAndAddress: 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.',
   
   // Brand & Location Customization with new Logo
   salonName: 'BK KUAFÖR & BEAUTY',

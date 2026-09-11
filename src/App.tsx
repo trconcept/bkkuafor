@@ -143,6 +143,14 @@ const validateBookingAgainstAbuseRules = (input: {
 };
 
 export default function App() {
+  const normalizeWebContent = (content: WebContent): WebContent => ({
+    ...content,
+    showcaseSubtitle: content.showcaseSubtitle === '2026 Menü Seçkisi' ? 'Menü Seçkisi' : content.showcaseSubtitle,
+    footerCopyrightAndAddress: content.footerCopyrightAndAddress === '© 2026 BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
+      ? 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
+      : content.footerCopyrightAndAddress,
+  });
+
   const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<SalonService | null>(null);
 
@@ -222,7 +230,7 @@ export default function App() {
   const [webContent, setWebContent] = useState<WebContent>(() => {
     try {
       const saved = localStorage.getItem('salon_web_content');
-      return saved ? JSON.parse(saved) : INITIAL_WEB_CONTENT;
+      return saved ? normalizeWebContent(JSON.parse(saved) as WebContent) : INITIAL_WEB_CONTENT;
     } catch {
       return INITIAL_WEB_CONTENT;
     }
@@ -301,7 +309,7 @@ export default function App() {
     try {
       const savedWebContent = localStorage.getItem('salon_web_content');
       if (savedWebContent) {
-        const parsed = JSON.parse(savedWebContent);
+        const parsed = normalizeWebContent(JSON.parse(savedWebContent) as WebContent);
         setWebContent((prev) => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
       }
 
@@ -825,7 +833,7 @@ export default function App() {
                     {webContent.heroTitle || "BK Kuaför ile Saçlarınızdaki Eşsiz Sanatı Keşfedin"}
                   </h1>
                   <p className="text-[#9e9da8] text-sm sm:text-base leading-relaxed lg:max-w-lg">
-                    {webContent.heroDescription || "BK Kuaför & Beauty; yetkili Kérastase Paris bakım ritüelleri, 2026 resmi fiyat tarifesi, Olaplex bağ korumalı renklendirme, profesyonel solaryum ve porselen makyaj hizmetleriyle size özel lüks güzellik deneyimi sunar."}
+                    {webContent.heroDescription || "BK Kuaför & Beauty; yetkili Kérastase Paris bakım ritüelleri, Olaplex bağ korumalı renklendirme, profesyonel solaryum ve porselen makyaj hizmetleriyle size özel lüks güzellik deneyimi sunar."}
                   </p>
                   
                   <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start pt-2">
@@ -878,18 +886,18 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Showcase 2026 Tariff services segment */}
+              {/* Showcase tariff services segment */}
               <div className="space-y-6" id="home-featured-services">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <span className="text-xs text-[#dfa069] font-extrabold tracking-widest uppercase font-mono">{webContent.showcaseSubtitle || "2026 Menü Seçkisi"}</span>
+                    <span className="text-xs text-[#dfa069] font-extrabold tracking-widest uppercase font-mono">{webContent.showcaseSubtitle || "Menü Seçkisi"}</span>
                     <h2 className="font-sans font-black text-2xl text-gray-950 tracking-tight">{webContent.showcaseTitle || "Öne Çıkan Hizmet ve Bakımlarımız"}</h2>
                   </div>
                   <button 
                     onClick={() => changeSectionWithUrl('services')}
                     className="text-xs font-bold text-[#cba358] hover:text-[#dfa069] transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    Tüm 2026 Tarifesi ({services.length}) <ArrowRight className="h-3.5 w-3.5" />
+                    Tüm Tarife ({services.length}) <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -1033,7 +1041,7 @@ export default function App() {
                         onChange={(e) => setContactSubject(e.target.value)}
                         className="w-full bg-[#1c1c22] border border-[#2d2d35] rounded-xl px-3.5 py-2.5 text-white outline-none"
                       >
-                        <option value="Genel Sorular">Genel Sorular / 2026 Fiyat Bilgisi</option>
+                        <option value="Genel Sorular">Genel Sorular / Fiyat Bilgisi</option>
                         <option value="Kérastase Bakımları">Kérastase Paris Ritüelleri & K-SCAN</option>
                         <option value="Solaryum Seansları">Solaryum Seansları (Dakika Başı 50 TL)</option>
                         <option value="Gelin Saçı & Makyajı">Gelin Saçı & Makyajı Paketleri</option>
@@ -1164,7 +1172,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* B. 2026 FİYAT TARİFESİ & HİZMETLERİMİZ VIEW */}
+          {/* B. FİYAT TARİFESİ & HİZMETLERİMİZ VIEW */}
           {activeSection === 'services' && (
             <motion.div
               key="services-section"
@@ -1176,7 +1184,7 @@ export default function App() {
             >
               <div className="text-center max-w-2xl mx-auto space-y-2">
                 <span className="text-xs text-[#a06b3e] font-black font-mono uppercase tracking-[0.2em]">
-                  2026 Resmi Fiyat Tarifesi
+                  Resmi Fiyat Tarifesi
                 </span>
                 <h2 className="font-sans font-black text-3xl text-gray-950 tracking-tight">Hizmet Menümüz & Seans Tarifeleri</h2>
                 <p className="text-gray-500 text-xs sm:text-sm">
@@ -1519,7 +1527,7 @@ export default function App() {
           </div>
 
           <p className="text-gray-500">
-            {webContent.footerCopyrightAndAddress || `© 2026 ${webContent.salonName || "BK Kuaför"} • ${webContent.salonDistrictCity || "Beyoğlu, İstanbul."}`}
+            {webContent.footerCopyrightAndAddress || `© ${webContent.salonName || "BK Kuaför"} • ${webContent.salonDistrictCity || "Beyoğlu, İstanbul."}`}
           </p>
 
           <div className="flex space-x-4 font-mono text-xs">

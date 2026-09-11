@@ -66,6 +66,10 @@ export default function ServiceCard({
           src={service.image}
           alt={service.name}
           referrerPolicy="no-referrer"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = '/fiyat-tarifesi.jpg';
+          }}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         {/* Category Badge overlay */}

@@ -233,6 +233,9 @@ export default function AdminDashboard({
   const [editSrvDescription, setEditSrvDescription] = useState('');
   const [editSrvFeatures, setEditSrvFeatures] = useState('');
   const [editSrvImage, setEditSrvImage] = useState('');
+  const [bulkPriceVisibility, setBulkPriceVisibility] = useState<'unchanged' | 'show' | 'hide'>('unchanged');
+  const [bulkCustomPriceText, setBulkCustomPriceText] = useState('');
+  const [bulkApplyCustomPriceText, setBulkApplyCustomPriceText] = useState(false);
 
   // -------------------------------------------------------------
   // KÉRASTASE ÜRÜN EKLE / DÜZENLE STATES
@@ -368,6 +371,25 @@ export default function AdminDashboard({
     reader.readAsDataURL(file);
   };
 
+  const readImageFile = (e: ChangeEvent<HTMLInputElement>, onLoaded: (value: string) => void) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen bir görsel dosyası seçin.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Görsel boyutu 2MB üzerinde olmamalıdır.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') onLoaded(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // -------------------------------------------------------------
   // SERVICE ACTIONS
   // -------------------------------------------------------------
@@ -458,6 +480,28 @@ export default function AdminDashboard({
     if (window.confirm('Bu hizmet paketini silmek istediğinizden emin misiniz?')) {
       onUpdateServices(services.filter((s) => s.id !== id));
     }
+  };
+
+  const handleBulkUpdatePrices = () => {
+    if (bulkPriceVisibility === 'unchanged' && !bulkApplyCustomPriceText) {
+      alert('Toplu uygulamak istediğiniz fiyat ayarını seçin.');
+      return;
+    }
+
+    const updatedServices = services.map((service) => ({
+      ...service,
+      ...(bulkPriceVisibility === 'show' ? { showPrice: true } : {}),
+      ...(bulkPriceVisibility === 'hide' ? { showPrice: false } : {}),
+      ...(bulkApplyCustomPriceText
+        ? { customPriceText: bulkCustomPriceText.trim() || undefined }
+        : {}),
+    }));
+
+    onUpdateServices(updatedServices);
+    setBulkPriceVisibility('unchanged');
+    setBulkCustomPriceText('');
+    setBulkApplyCustomPriceText(false);
+    alert('Fiyat ayarları tüm hizmetlere uygulandı.');
   };
 
   // -------------------------------------------------------------
@@ -1207,7 +1251,7 @@ export default function AdminDashboard({
   const sidebarNavItems = [
     { id: 'appointments', label: 'Randevu Takvimi', count: pendingAppointments.length, icon: <Calendar className="h-4 w-4" /> },
     { id: 'stats', label: 'İstatistikler', count: 0, icon: <BarChart3 className="h-4 w-4" /> },
-    { id: 'services', label: '2026 Fiyat Tarifesi & Hizmetler', count: services.length, icon: <Scissors className="h-4 w-4" /> },
+    { id: 'services', label: 'Fiyat Tarifesi & Hizmetler', count: services.length, icon: <Scissors className="h-4 w-4" /> },
     { id: 'kerastase', label: 'KÉRASTASE Kataloğu', count: kerastaseProducts.length, icon: <Sparkles className="h-4 w-4 text-[#dfa069]" /> },
     { id: 'blog', label: 'Blog Yönetimi', count: blogPosts.length, icon: <BookOpen className="h-4 w-4" /> },
     { id: 'social', label: 'Sosyal Medya Ayarları', count: 0, icon: <Share2 className="h-4 w-4" /> },
@@ -2216,7 +2260,7 @@ export default function AdminDashboard({
           <div className="bg-white rounded-3xl p-6 border border-gray-150 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
               <div>
-                <h3 className="font-sans font-black text-xl text-gray-950">2026 Fiyat Tarifesi & Salon Hizmetleri</h3>
+                <h3 className="font-sans font-black text-xl text-gray-950">Fiyat Tarifesi & Salon Hizmetleri</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   İstanbul Kadın Kuaförleri Odası tarifesi ve Solaryum (dakika başı 50 TL) gibi tüm işlemleri esnek düzenleyin.
                 </p>
@@ -2229,6 +2273,53 @@ export default function AdminDashboard({
                 <Plus className="h-4 w-4" />
                 <span>Yeni İşlem / Hizmet Ekle</span>
               </button>
+            </div>
+
+            <div className="rounded-2xl border border-[#dfa069]/30 bg-amber-50/30 p-4 space-y-3">
+              <div>
+                <h4 className="font-sans font-black text-sm text-gray-900">Toplu fiyat ayarları</h4>
+                <p className="text-[11px] text-gray-500 mt-0.5">Seçtiğiniz ayarlar tüm hizmetlere uygulanır. Tek tek düzenleme için hizmet kartındaki kalem simgesini kullanabilirsiniz.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label className="text-[10px] text-gray-500 font-mono block">Fiyat görünürlüğü</label>
+                  <select
+                    value={bulkPriceVisibility}
+                    onChange={(e) => setBulkPriceVisibility(e.target.value as typeof bulkPriceVisibility)}
+                    className="w-full border border-gray-200 bg-white rounded-xl p-2.5 text-xs"
+                  >
+                    <option value="unchanged">Değiştirme</option>
+                    <option value="show">Fiyatı göster</option>
+                    <option value="hide">Fiyatı gizle</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 font-mono block">Özel fiyat metni</label>
+                  <input
+                    type="text"
+                    value={bulkCustomPriceText}
+                    onChange={(e) => setBulkCustomPriceText(e.target.value)}
+                    placeholder="Örn: Fiyat Alınız"
+                    className="w-full border border-gray-200 bg-white rounded-xl p-2.5 text-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBulkUpdatePrices}
+                  className="px-4 py-2.5 bg-[#0f0f11] hover:bg-[#dfa069] text-white hover:text-gray-950 rounded-xl font-black text-xs"
+                >
+                  Tümüne Uygula
+                </button>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bulkApplyCustomPriceText}
+                  onChange={(e) => setBulkApplyCustomPriceText(e.target.checked)}
+                  className="h-4 w-4 accent-[#dfa069]"
+                />
+                Özel fiyat metnini de tüm hizmetlere uygula
+              </label>
             </div>
 
             {/* NEW SERVICE FORM */}
@@ -2324,6 +2415,30 @@ export default function AdminDashboard({
                     </div>
 
                     <div className="sm:col-span-3">
+                      <label className="text-[10px] text-gray-500 font-mono block">Hizmet Görseli</label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="url"
+                          placeholder="Görsel URL'si"
+                          value={srvImage}
+                          onChange={(e) => setSrvImage(e.target.value)}
+                          className="w-full border border-gray-200 bg-white rounded-xl p-2.5 text-xs"
+                        />
+                        <label className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 bg-white rounded-xl cursor-pointer hover:bg-gray-50">
+                          <Upload className="h-3.5 w-3.5" />
+                          Dosyadan seç
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => readImageFile(e, setSrvImage)}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">En fazla 2MB. URL veya bilgisayarınızdan görsel seçebilirsiniz.</p>
+                    </div>
+
+                    <div className="sm:col-span-3">
                       <label className="text-[10px] text-gray-500 font-mono block">Açıklama *</label>
                       <textarea
                         required
@@ -2411,6 +2526,29 @@ export default function AdminDashboard({
                       <label htmlFor="edit-srv-show-price" className="cursor-pointer">
                         Fiyatı sitede göster
                       </label>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] text-gray-500 font-mono block">Hizmet Görseli</label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="url"
+                          placeholder="Görsel URL'si veya dosya seçin"
+                          value={editSrvImage}
+                          onChange={(e) => setEditSrvImage(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl p-2.5"
+                        />
+                        <label className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 bg-white rounded-xl cursor-pointer hover:bg-gray-50">
+                          <Upload className="h-3.5 w-3.5" />
+                          Dosyadan seç
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => readImageFile(e, setEditSrvImage)}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
 
                     <div className="sm:col-span-2">
