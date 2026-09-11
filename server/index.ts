@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
@@ -1200,7 +1201,11 @@ const start = async () => {
     });
     app.use(vite.middlewares);
   } else {
-    const staticRoot = path.join(process.cwd(), 'dist');
+    const distDir = path.join(process.cwd(), 'dist');
+    const buildDir = path.join(process.cwd(), 'build');
+    const staticRoot = fs.existsSync(path.join(distDir, 'index.html'))
+      ? distDir
+      : (fs.existsSync(path.join(buildDir, 'index.html')) ? buildDir : distDir);
     app.use(express.static(staticRoot));
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api/')) return next();
