@@ -347,6 +347,7 @@ export default function AdminDashboard({
   const [galleryItemMediaType, setGalleryItemMediaType] = useState<'image' | 'video'>('image');
   const [galleryItemVideoUrl, setGalleryItemVideoUrl] = useState('');
   const [galleryEditIndex, setGalleryEditIndex] = useState<number | null>(null);
+  const [galleryMediaUploading, setGalleryMediaUploading] = useState(false);
 
   const [faqTitleDraft, setFaqTitleDraft] = useState(webContent.faqTitle || '');
   const [faqSubtitleDraft, setFaqSubtitleDraft] = useState(webContent.faqSubtitle || '');
@@ -939,12 +940,15 @@ export default function AdminDashboard({
     const reader = new FileReader();
     reader.onload = async () => {
       if (typeof reader.result !== 'string') return;
+      setGalleryMediaUploading(true);
       try {
         const result = await uploadAdminMedia(reader.result);
         setGalleryItemSrc(result.url);
         if (file.type.startsWith('video/')) setGalleryItemVideoUrl(result.url);
       } catch (error) {
         alert(error instanceof Error ? error.message : 'Galeri dosyası sunucuya yüklenemedi.');
+      } finally {
+        setGalleryMediaUploading(false);
       }
     };
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
@@ -962,6 +966,18 @@ export default function AdminDashboard({
     e.preventDefault();
     if (!galleryItemTitle.trim()) {
       alert('Galeri başlığı gerekli.');
+      return;
+    }
+    if (galleryMediaUploading) {
+      alert('Dosya yükleniyor. Lütfen tamamlanmasını bekleyin.');
+      return;
+    }
+    if (galleryItemMediaType === 'video' && !galleryItemVideoUrl.trim()) {
+      alert('Video için YouTube bağlantısı veya yüklenmiş video gereklidir.');
+      return;
+    }
+    if (galleryItemMediaType === 'image' && !galleryItemSrc.trim()) {
+      alert('Resim için görsel bağlantısı veya yüklenmiş görsel gereklidir.');
       return;
     }
 
@@ -3644,10 +3660,10 @@ export default function AdminDashboard({
                 <div className="sm:col-span-2">
                   <label className="text-[10px] text-gray-500 font-mono block">Görsel veya Video URL</label>
                   <div className="flex gap-2 items-center">
-                  <input type="url" value={galleryItemSrc} onChange={(e) => setGalleryItemSrc(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" placeholder="Görsel URL'si veya video küçük görseli" />
+                  <input type="text" value={galleryItemSrc} onChange={(e) => setGalleryItemSrc(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" placeholder={galleryItemMediaType === 'image' ? 'Görsel URL adresi' : 'Video küçük görseli (opsiyonel)'} />
                     <label className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0">
                       <Upload className="h-4 w-4" />
-                      <input type="file" accept="image/*,video/*" onChange={handleGalleryItemFileUpload} className="hidden" />
+                      <input type="file" accept={galleryItemMediaType === 'image' ? 'image/*' : 'video/*'} onChange={handleGalleryItemFileUpload} className="hidden" />
                     </label>
                   </div>
                 </div>
@@ -3655,15 +3671,15 @@ export default function AdminDashboard({
                 {galleryItemMediaType === 'video' && (
                   <div className="sm:col-span-2">
                     <label className="text-[10px] text-gray-500 font-mono block">Video URL (YouTube veya doğrudan video bağlantısı)</label>
-                    <input type="url" value={galleryItemVideoUrl} onChange={(e) => setGalleryItemVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... veya .mp4" className="w-full border border-gray-200 rounded-xl p-2.5" />
-                    <p className="text-[10px] text-gray-400 mt-1">Bilgisayardan video seçebilir veya YouTube bağlantısı yapıştırabilirsiniz.</p>
+                    <input type="text" value={galleryItemVideoUrl} onChange={(e) => setGalleryItemVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... veya yüklenmiş video" className="w-full border border-gray-200 rounded-xl p-2.5" />
+                    <p className="text-[10px] text-gray-400 mt-1">{galleryMediaUploading ? 'Video yükleniyor...' : 'Bilgisayardan video seçebilir veya YouTube bağlantısı yapıştırabilirsiniz.'}</p>
                   </div>
                 )}
               </div>
 
               <div className="flex justify-end">
                 <button type="submit" className="px-5 py-2.5 bg-[#0f0f11] hover:bg-[#dfa069] text-white hover:text-gray-950 rounded-xl font-black text-[10px] uppercase tracking-wider">
-                  {galleryEditIndex !== null ? 'Kaydet' : 'Ekle'}
+                  {galleryMediaUploading ? 'Yükleniyor...' : galleryEditIndex !== null ? 'Kaydet' : 'Ekle'}
                 </button>
               </div>
             </form>
