@@ -4,7 +4,7 @@ import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
 import mysql, { Pool, RowDataPacket } from 'mysql2/promise';
 
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAX_REQUESTS_PER_HOUR = 8;
 const MAX_DAILY_PER_IP = 2;
