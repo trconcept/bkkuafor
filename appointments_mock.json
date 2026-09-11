@@ -1,0 +1,20 @@
+{
+  "store": {
+    "appointments": [],
+    "rateEvents": []
+  },
+  "blockedPhones": [],
+  "adminUsers": [
+    [
+      "admin",
+      {
+        "username": "admin",
+        "password_hash": "77f5d02287b894671f02d6222575545abb2d6fd017f5a2ab1c2df61679876588ffac4da33c12338ddd849265fe4ea1639c3b9759c0fce2e5a0c75ceedd0717b6",
+        "password_salt": "2ef3aef8aab958ef6abb18e324917ae2a346282ec29778cff4117b73eec3fb80",
+        "password_iterations": 210000
+      }
+    ]
+  ],
+  "adminSessions": [],
+  "uploadedMedia": []
+}

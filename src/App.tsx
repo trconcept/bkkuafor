@@ -35,7 +35,9 @@ import {
   lookupAppointment,
   logoutAdmin,
   replaceAdminBlockedPhones,
-  updateAdminAppointment
+  updateAdminAppointment,
+  getSetting,
+  updateSetting
 } from './utils/api';
 import { normalizeTurkishMobilePhone } from './utils/phone';
 
@@ -174,6 +176,103 @@ export default function App() {
         ? 'BK Kuaför & Beauty Lounge • İstanbul Kadın Kuaförleri Odası Üyesi.'
         : content.footerCopyrightAndAddress,
     };
+  };
+
+  const loadAllSettingsFromServer = async () => {
+    try {
+      const [
+        webContentRes,
+        servicesRes,
+        kerastaseProductsRes,
+        blogPostsRes,
+        reviewsRes,
+        stylistsRes,
+        messagesRes
+      ] = await Promise.all([
+        getSetting('web_content'),
+        getSetting('services'),
+        getSetting('kerastase_products'),
+        getSetting('blog_posts'),
+        getSetting('reviews'),
+        getSetting('stylists'),
+        getSetting('messages')
+      ]);
+
+      if (webContentRes && webContentRes.value) {
+        const val = normalizeWebContent(webContentRes.value);
+        setWebContent(val);
+        localStorage.setItem('salon_web_content', JSON.stringify(val));
+      }
+      if (servicesRes && servicesRes.value) {
+        const val = sanitizeServices(servicesRes.value);
+        setServices(val);
+        localStorage.setItem('salon_services', JSON.stringify(val));
+      }
+      if (kerastaseProductsRes && kerastaseProductsRes.value) {
+        setKerastaseProducts(kerastaseProductsRes.value);
+        localStorage.setItem('salon_kerastase_products', JSON.stringify(kerastaseProductsRes.value));
+      }
+      if (blogPostsRes && blogPostsRes.value) {
+        setBlogPosts(blogPostsRes.value);
+        localStorage.setItem('salon_blog_posts', JSON.stringify(blogPostsRes.value));
+      }
+      if (reviewsRes && reviewsRes.value) {
+        setReviews(reviewsRes.value);
+        localStorage.setItem('salon_reviews', JSON.stringify(reviewsRes.value));
+      }
+      if (stylistsRes && stylistsRes.value) {
+        setStylists(stylistsRes.value);
+        localStorage.setItem('salon_stylists', JSON.stringify(stylistsRes.value));
+      }
+      if (messagesRes && messagesRes.value) {
+        setMessages(messagesRes.value);
+        localStorage.setItem('salon_messages', JSON.stringify(messagesRes.value));
+      }
+    } catch (err) {
+      console.warn('Sunucudan ayarlar yüklenemedi:', err);
+    }
+  };
+
+  const handleUpdateSetting = async (key: string, value: any, setter: (val: any) => void, localKey: string) => {
+    setter(value);
+    try {
+      localStorage.setItem(localKey, JSON.stringify(value));
+    } catch (e) {
+      console.warn('Local storage write failed:', e);
+    }
+    try {
+      await updateSetting(key, value);
+    } catch (err) {
+      console.error(`Sunucuya kaydedilemedi: ${key}`, err);
+    }
+  };
+
+  const handleUpdateWebContent = (content: WebContent) => {
+    void handleUpdateSetting('web_content', content, setWebContent, 'salon_web_content');
+  };
+
+  const handleUpdateServices = (updatedServices: SalonService[]) => {
+    void handleUpdateSetting('services', updatedServices, setServices, 'salon_services');
+  };
+
+  const handleUpdateKerastaseProducts = (products: KerastaseProduct[]) => {
+    void handleUpdateSetting('kerastase_products', products, setKerastaseProducts, 'salon_kerastase_products');
+  };
+
+  const handleUpdateBlogPosts = (posts: BlogPost[]) => {
+    void handleUpdateSetting('blog_posts', posts, setBlogPosts, 'salon_blog_posts');
+  };
+
+  const handleUpdateReviews = (updatedReviews: SalonReview[]) => {
+    void handleUpdateSetting('reviews', updatedReviews, setReviews, 'salon_reviews');
+  };
+
+  const handleUpdateStylists = (updatedStylists: Stylist[]) => {
+    void handleUpdateSetting('stylists', updatedStylists, setStylists, 'salon_stylists');
+  };
+
+  const handleUpdateMessages = (updatedMessages: AdminMessage[]) => {
+    void handleUpdateSetting('messages', updatedMessages, setMessages, 'salon_messages');
   };
 
   const getYoutubeEmbedUrl = (value?: string, autoplay = false) => {
@@ -428,6 +527,7 @@ export default function App() {
 
   useEffect(() => {
     refreshStateFromStorage();
+    void loadAllSettingsFromServer();
 
     const onStorage = (event: StorageEvent) => {
       if (!event.key) return;
@@ -791,7 +891,7 @@ export default function App() {
       id: `rev-${reviews.length + 1}`,
       date: new Date().toISOString().split('T')[0]
     };
-    setReviews((prev) => [newRev, ...prev]);
+    handleUpdateReviews([newRev, ...reviews]);
   };
 
   // Action: Contact message submission
@@ -812,7 +912,7 @@ export default function App() {
       read: false
     };
 
-    setMessages((prev) => [newMsg, ...prev]);
+    handleUpdateMessages([newMsg, ...messages]);
     setContactName('');
     setContactPhone('');
     setContactMessage('');
@@ -1689,13 +1789,13 @@ export default function App() {
                   notificationSettings={adminNotificationSettings}
                   onUpdateNotifications={setAdminNotificationSettings}
                   onUpdateAppointments={handleAdminAppointmentsUpdate}
-                  onUpdateServices={setServices}
-                  onUpdateStylists={setStylists}
-                  onUpdateMessages={setMessages}
-                  onUpdateReviews={setReviews}
-                  onUpdateWebContent={setWebContent}
-                  onUpdateKerastaseProducts={setKerastaseProducts}
-                  onUpdateBlogPosts={setBlogPosts}
+                  onUpdateServices={handleUpdateServices}
+                  onUpdateStylists={handleUpdateStylists}
+                  onUpdateMessages={handleUpdateMessages}
+                  onUpdateReviews={handleUpdateReviews}
+                  onUpdateWebContent={handleUpdateWebContent}
+                  onUpdateKerastaseProducts={handleUpdateKerastaseProducts}
+                  onUpdateBlogPosts={handleUpdateBlogPosts}
                   onUpdateBlockedPhones={handleBlockedPhonesUpdate}
                   onChangeAdminPassword={handleAdminPasswordChange}
                   onLogout={() => {

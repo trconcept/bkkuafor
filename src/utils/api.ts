@@ -85,3 +85,12 @@ export const deleteAdminAppointment = (id: string) =>
   request<{ ok: true }>(`/api/admin/appointments/${encodeURIComponent(id)}`, {
     method: 'DELETE'
   });
+
+export const getSetting = (key: string) =>
+  request<{ ok: true; value: any }>(`/api/settings/${encodeURIComponent(key)}`);
+
+export const updateSetting = (key: string, value: any) =>
+  request<{ ok: true }>(`/api/settings/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value })
+  });

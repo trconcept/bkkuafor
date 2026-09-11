@@ -4,7 +4,7 @@ import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
 import mysql, { Pool, RowDataPacket } from 'mysql2/promise';
 
-const port = Number(process.env.PORT || 4000);
+const port = 3000;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const MAX_REQUESTS_PER_HOUR = 8;
 const MAX_DAILY_PER_IP = 2;
@@ -15,6 +15,13 @@ const PENDING_LOCK_MS = 10 * 60 * 1000;
 const MIN_FORM_TIME_MS = 2_000;
 const MAX_FORM_TIME_MS = 24 * 60 * 60 * 1000;
 const SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
+let isMockMode = false;
+let mockAdminUsers = new Map<string, { username: string; password_hash: string; password_salt: string; password_iterations: number }>();
+let mockAdminSessions = new Map<string, { token_hash: string; username: string; expires_at: Date }>();
+const mockBlockedPhones = new Set<string>();
+const mockUploadedMedia = new Map<string, { mime_type: string; media_data: Buffer }>();
+let mockAppSettings = new Map<string, string>();
 
 type RateEvent = { timestamp: number; ip: string; deviceId: string };
 type StoredAppointment = {
@@ -136,6 +143,229 @@ const publicAppointment = (appointment: StoredAppointment) => {
   return safeAppointment;
 };
 
+const mockExecuteOrQuery = async (sql: string, params: any[] = []): Promise<[any, any]> => {
+  const normalizedSql = sql.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  if (normalizedSql.startsWith('select 1')) {
+    return [[{ '1': 1 }], []];
+  }
+
+  if (normalizedSql.includes('select username from admin_sessions')) {
+    const tokenHash = params[0];
+    const session = mockAdminSessions.get(tokenHash);
+    if (session && new Date(session.expires_at) > new Date()) {
+      return [[{ username: session.username }], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('insert into admin_sessions')) {
+    const tokenHash = params[0];
+    const username = params[1];
+    mockAdminSessions.set(tokenHash, {
+      token_hash: tokenHash,
+      username,
+      expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000)
+    });
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('delete from admin_sessions')) {
+    const tokenHash = params[0];
+    mockAdminSessions.delete(tokenHash);
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('select username, password_hash, password_salt, password_iterations from admin_users')) {
+    const username = params[0];
+    const user = mockAdminUsers.get(username);
+    if (user) {
+      return [[{
+        username: user.username,
+        password_hash: user.password_hash,
+        password_salt: user.password_salt,
+        password_iterations: user.password_iterations
+      }], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('update admin_users set password_hash')) {
+    const hash = params[0];
+    const salt = params[1];
+    const iterations = params[2];
+    const username = params[3];
+    const user = mockAdminUsers.get(username);
+    if (user) {
+      mockAdminUsers.set(username, {
+        username,
+        password_hash: hash,
+        password_salt: salt,
+        password_iterations: iterations
+      });
+      return [{ affectedRows: 1 }, []];
+    }
+    return [{ affectedRows: 0 }, []];
+  }
+
+  if (normalizedSql.includes('select phone from blocked_phones')) {
+    const rows = Array.from(mockBlockedPhones).map(phone => ({ phone }));
+    return [rows, []];
+  }
+
+  if (normalizedSql.includes('insert ignore into blocked_phones') || normalizedSql.includes('insert into blocked_phones')) {
+    const phone = params[0];
+    mockBlockedPhones.add(phone);
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('delete from blocked_phones')) {
+    const phone = params[0];
+    mockBlockedPhones.delete(phone);
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('insert into uploaded_media')) {
+    const id = params[0];
+    const mime = params[1];
+    const data = params[2];
+    mockUploadedMedia.set(id, { mime_type: mime, media_data: data });
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('select mime_type, media_data from uploaded_media')) {
+    const id = params[0];
+    const media = mockUploadedMedia.get(id);
+    if (media) {
+      return [[{ mime_type: media.mime_type, media_data: media.media_data }], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('select setting_value from app_settings')) {
+    const key = params[0];
+    const val = mockAppSettings.get(key);
+    if (val !== undefined) {
+      return [[{ setting_value: val }], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('insert into app_settings') || normalizedSql.includes('update app_settings')) {
+    const key = params[0];
+    const val = params[1];
+    mockAppSettings.set(key, val);
+    return [{ affectedRows: 1 }, []];
+  }
+
+  if (normalizedSql.includes('select id from blocked_phones')) {
+    const phone = params[0];
+    if (mockBlockedPhones.has(phone)) {
+      return [[{ id: 1 }], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('select * from appointments') && normalizedSql.includes('tracking_code = ?')) {
+    const code = params[0];
+    const appt = store.appointments.find(a => a.trackingCode === code);
+    if (appt) {
+      const dbRow = {
+        id: appt.id,
+        tracking_code: appt.trackingCode,
+        customer_name: appt.customerName,
+        customer_phone: appt.customerPhone || null,
+        customer_email: appt.customerEmail || null,
+        services_json: JSON.stringify(appt.services),
+        stylist_json: JSON.stringify(appt.stylist),
+        appointment_date: appt.date,
+        time_slot: appt.timeSlot,
+        total_price: appt.totalPrice,
+        price_note: appt.priceNote || null,
+        status: appt.status,
+        notes: appt.notes || null,
+        created_at: appt.createdAt,
+        fingerprint: appt.fingerprint,
+        ip: appt.ip,
+        device_id: appt.deviceId,
+        lock_expires_at: appt.lockExpiresAt
+      };
+      return [[dbRow], []];
+    }
+    return [[], []];
+  }
+
+  if (normalizedSql.includes('select * from appointments')) {
+    const rows = store.appointments.map(appt => ({
+      id: appt.id,
+      tracking_code: appt.trackingCode,
+      customer_name: appt.customerName,
+      customer_phone: appt.customerPhone || null,
+      customer_email: appt.customerEmail || null,
+      services_json: JSON.stringify(appt.services),
+      stylist_json: JSON.stringify(appt.stylist),
+      appointment_date: appt.date,
+      time_slot: appt.timeSlot,
+      total_price: appt.totalPrice,
+      price_note: appt.priceNote || null,
+      status: appt.status,
+      notes: appt.notes || null,
+      created_at: appt.createdAt,
+      fingerprint: appt.fingerprint,
+      ip: appt.ip,
+      device_id: appt.deviceId,
+      lock_expires_at: appt.lockExpiresAt
+    }));
+    return [rows, []];
+  }
+
+  if (normalizedSql.includes('select timestamp_ms, ip, device_id from rate_events')) {
+    const rows = store.rateEvents.map(event => ({
+      timestamp_ms: event.timestamp,
+      ip: event.ip,
+      device_id: event.deviceId
+    }));
+    return [rows, []];
+  }
+
+  if (normalizedSql.startsWith('create table')) {
+    return [{}, []];
+  }
+
+  console.warn('[AI Studio Mock SQL] Unhandled query:', sql, params);
+  return [[], []];
+};
+
+const mockPool = {
+  query: async (sql: string, params?: any[]) => {
+    return mockExecuteOrQuery(sql, params);
+  },
+  execute: async (sql: string, params?: any[]) => {
+    return mockExecuteOrQuery(sql, params);
+  },
+  getConnection: async () => {
+    return {
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
+      release: () => {},
+      query: async (sql: string, params?: any[]) => {
+        return mockExecuteOrQuery(sql, params);
+      },
+      execute: async (sql: string, params?: any[]) => {
+        return mockExecuteOrQuery(sql, params);
+      }
+    };
+  }
+};
+
+const checkDbConfig = () => {
+  const host = process.env.DB_HOST || process.env.MYSQL_HOST;
+  const user = process.env.DB_USER || process.env.MYSQL_USER;
+  const database = process.env.DB_NAME || process.env.MYSQL_DATABASE;
+  return !!(host && user && database);
+};
+
 const getDbConfig = () => {
   const host = process.env.DB_HOST || process.env.MYSQL_HOST;
   const user = process.env.DB_USER || process.env.MYSQL_USER;
@@ -158,7 +388,23 @@ const getDbConfig = () => {
 };
 
 const getPool = () => {
-  if (!pool) pool = mysql.createPool(getDbConfig());
+  if (isMockMode) {
+    return mockPool as unknown as Pool;
+  }
+  if (!pool) {
+    if (!checkDbConfig()) {
+      console.warn('[AI Studio] DB configuration missing, activating mock mode');
+      isMockMode = true;
+      return mockPool as unknown as Pool;
+    }
+    try {
+      pool = mysql.createPool(getDbConfig());
+    } catch (e) {
+      console.warn('[AI Studio] Failed to initialize DB pool, activating mock mode:', e);
+      isMockMode = true;
+      return mockPool as unknown as Pool;
+    }
+  }
   return pool;
 };
 
@@ -239,6 +485,13 @@ const ensureSchema = async () => {
       KEY idx_uploaded_media_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+      setting_value LONGTEXT NOT NULL,
+      updated_at DATETIME NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 };
 
 const serialiseJson = (value: unknown) => JSON.stringify(value);
@@ -272,6 +525,22 @@ const rowToAppointment = (row: DbRow): StoredAppointment => ({
 });
 
 const saveStore = async () => {
+  if (isMockMode) {
+    try {
+      const fs = await import('node:fs/promises');
+      await fs.writeFile('./appointments_mock.json', JSON.stringify({
+        store,
+        blockedPhones: Array.from(mockBlockedPhones),
+        adminUsers: Array.from(mockAdminUsers.entries()),
+        adminSessions: Array.from(mockAdminSessions.entries()),
+        uploadedMedia: Array.from(mockUploadedMedia.entries()).map(([k, v]) => [k, { mime_type: v.mime_type, media_data: v.media_data.toString('base64') }]),
+        appSettings: Array.from(mockAppSettings.entries())
+      }, null, 2));
+    } catch (e) {
+      console.warn('Failed to save mock store:', e);
+    }
+    return;
+  }
   const db = getPool();
   const connection = await db.getConnection();
   try {
@@ -322,6 +591,36 @@ const saveStore = async () => {
 };
 
 const loadStore = async () => {
+  if (isMockMode) {
+    try {
+      const fs = await import('node:fs/promises');
+      const data = await fs.readFile('./appointments_mock.json', 'utf-8');
+      const parsed = JSON.parse(data);
+      if (parsed.store) store = parsed.store;
+      if (Array.isArray(parsed.blockedPhones)) {
+        mockBlockedPhones.clear();
+        parsed.blockedPhones.forEach((p: string) => mockBlockedPhones.add(p));
+      }
+      if (parsed.adminUsers) {
+        mockAdminUsers = new Map(parsed.adminUsers);
+      }
+      if (parsed.adminSessions) {
+        mockAdminSessions = new Map(parsed.adminSessions.map(([k, v]: any) => [k, { ...v, expires_at: new Date(v.expires_at) }]));
+      }
+      if (parsed.uploadedMedia) {
+        mockUploadedMedia.clear();
+        for (const [k, v] of parsed.uploadedMedia) {
+          mockUploadedMedia.set(k, { mime_type: v.mime_type, media_data: Buffer.from(v.media_data, 'base64') });
+        }
+      }
+      if (parsed.appSettings) {
+        mockAppSettings = new Map(parsed.appSettings);
+      }
+    } catch {
+      // ignore if file doesn't exist yet
+    }
+    return;
+  }
   const db = getPool();
   const [appointmentRows] = await db.query<DbRow[]>('SELECT * FROM appointments ORDER BY created_at DESC');
   const [rateRows] = await db.query<DbRow[]>('SELECT timestamp_ms, ip, device_id FROM rate_events');
@@ -614,6 +913,41 @@ app.get('/api/media/:id', async (req, res, next) => {
   }
 });
 
+app.get('/api/settings/:key', async (req, res, next) => {
+  try {
+    const key = String(req.params.key).slice(0, 64);
+    const [rows] = await getPool().execute<DbRow[]>(
+      'SELECT setting_value FROM app_settings WHERE setting_key = ? LIMIT 1',
+      [key]
+    );
+    if (!rows[0]) {
+      return res.json({ ok: true, value: null });
+    }
+    const val = parseJson(rows[0].setting_value, null);
+    return res.json({ ok: true, value: val });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.put('/api/settings/:key', requireAdmin, async (req, res, next) => {
+  try {
+    const key = String(req.params.key).slice(0, 64);
+    if (!isRecord(req.body) || req.body.value === undefined) {
+      return jsonError(res, 400, 'Geçerli bir değer gönderilmedi.');
+    }
+    const serialized = serialiseJson(req.body.value);
+    await getPool().execute(
+      'INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?, ?, UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = UTC_TIMESTAMP()',
+      [key, serialized]
+    );
+    await serialise(async () => saveStore());
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get('/api/admin/appointments', requireAdmin, async (_, res, next) => {
   try {
     await serialise(async () => loadStore());
@@ -839,19 +1173,6 @@ app.delete('/api/admin/appointments/:id', requireAdmin, async (req, res, next) =
   }
 });
 
-const staticRoot = path.join(process.cwd(), 'dist');
-app.use(express.static(staticRoot));
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/')) return next();
-  return res.sendFile(path.join(staticRoot, 'index.html'));
-});
-
-app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
-  const status = isRecord(error) && typeof error.status === 'number' ? error.status : 500;
-  if (status === 400 || status === 413) return jsonError(res, status, status === 413 ? 'Gönderilen veri çok büyük.' : 'Geçersiz veri gönderildi.');
-  return next(error);
-});
-
 const cleanupTimer = setInterval(() => {
   void serialise(async () => {
     if (cleanup(Date.now())) await saveStore();
@@ -860,23 +1181,68 @@ const cleanupTimer = setInterval(() => {
 cleanupTimer.unref();
 
 const start = async () => {
-  await ensureSchema();
-  await loadStore();
+  try {
+    await ensureSchema();
+    await loadStore();
+  } catch (error) {
+    console.warn('[AI Studio] Database connection failed or is inaccessible. Falling back to Mock Mode...', error);
+    isMockMode = true;
+    await ensureSchema();
+    await loadStore();
+  }
+
+  // Vite middleware setup
+  if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const staticRoot = path.join(process.cwd(), 'dist');
+    app.use(express.static(staticRoot));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) return next();
+      return res.sendFile(path.join(staticRoot, 'index.html'));
+    });
+  }
+
+  app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+    const status = isRecord(error) && typeof error.status === 'number' ? error.status : 500;
+    if (status === 400 || status === 413) return jsonError(res, status, status === 413 ? 'Gönderilen veri çok büyük.' : 'Geçersiz veri gönderildi.');
+    return next(error);
+  });
+
   const adminUsername = (process.env.ADMIN_USERNAME || 'admin').trim();
   if (process.env.ADMIN_PASSWORD) {
-    const [rows] = await getPool().execute<DbRow[]>('SELECT id FROM admin_users WHERE username = ? LIMIT 1', [adminUsername]);
-    if (!rows[0]) {
-      const password = createPasswordRecord(process.env.ADMIN_PASSWORD);
-      await getPool().execute(
-        'INSERT INTO admin_users (username, password_hash, password_salt, password_iterations, created_at, updated_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())',
-        [adminUsername, password.hash, password.salt, password.iterations]
-      );
-      console.log(`Admin hesabı oluşturuldu: ${adminUsername}`);
+    if (isMockMode) {
+      if (!mockAdminUsers.has(adminUsername)) {
+        const password = createPasswordRecord(process.env.ADMIN_PASSWORD);
+        mockAdminUsers.set(adminUsername, {
+          username: adminUsername,
+          password_hash: password.hash,
+          password_salt: password.salt,
+          password_iterations: password.iterations
+        });
+        await saveStore();
+        console.log(`[AI Studio] Admin hesabı mock olarak oluşturuldu: ${adminUsername}`);
+      }
+    } else {
+      const [rows] = await getPool().execute<DbRow[]>('SELECT id FROM admin_users WHERE username = ? LIMIT 1', [adminUsername]);
+      if (!rows[0]) {
+        const password = createPasswordRecord(process.env.ADMIN_PASSWORD);
+        await getPool().execute(
+          'INSERT INTO admin_users (username, password_hash, password_salt, password_iterations, created_at, updated_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())',
+          [adminUsername, password.hash, password.salt, password.iterations]
+        );
+        console.log(`Admin hesabı oluşturuldu: ${adminUsername}`);
+      }
     }
   } else {
     console.warn('ADMIN_PASSWORD tanımlı değil; yeni kurulumda admin girişi kullanılamaz.');
   }
-  app.listen(port, () => console.log(`Kuaför API http://localhost:${port} adresinde çalışıyor.`));
+  app.listen(port, '0.0.0.0', () => console.log(`Kuaför API http://0.0.0.0:${port} adresinde çalışıyor.`));
 };
 
 void start().catch((error) => {
