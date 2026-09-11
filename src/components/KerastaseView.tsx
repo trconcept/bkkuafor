@@ -280,6 +280,13 @@ export default function KerastaseView({
                       alt={prod.name}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.dataset.fallback) {
+                          target.dataset.fallback = 'true';
+                          target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=600&auto=format&fit=crop';
+                        }
+                      }}
                     />
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
                       <span className="px-3 py-1 bg-[#0f0f11]/90 backdrop-blur-md text-[#ebd6b8] rounded-full text-[9.5px] font-mono font-black uppercase tracking-wider border border-[#dfa069]/20">

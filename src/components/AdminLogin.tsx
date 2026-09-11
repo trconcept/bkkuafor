@@ -51,7 +51,7 @@ export default function AdminLogin({ onLoginSuccess, onBackToHome }: AdminLoginP
         </div>
         <div className="space-y-1">
           <span className="text-[10px] text-[#dfa069] font-black uppercase font-mono tracking-widest block">Yetkili Giriş Modülü</span>
-          <h2 className="font-sans font-black text-2xl text-[#ebd6b8] tracking-tight">L'Étoile Yönetici Girişi</h2>
+          <h2 className="font-sans font-black text-2xl text-[#ebd6b8] tracking-tight">BK Kuaför Yönetici Girişi</h2>
           <p className="text-[#8e8d97] text-xs max-w-xs mx-auto">
             Salon yönetimi, randevu onayları, mesaj ve web içerik yönetimi için lütfen kimliğinizi doğrulayın.
           </p>
