@@ -1353,7 +1353,7 @@ export const INITIAL_WEB_CONTENT: WebContent = {
   salonName: 'BK KUAFÖR & BEAUTY',
   salonSubtitle: 'Bayan Kuaförü & Kérastase Salonu',
   salonLogoUrl: '/bk-logo.jpg',
-  salonDistrictCity: 'Beyoğlu, İstanbul',
+  salonDistrictCity: 'Çekmeköy, İstanbul',
 
   // Social Media Links
   socialLinks: {
@@ -1377,7 +1377,7 @@ export const INITIAL_WEB_CONTENT: WebContent = {
   // WhatsApp and Google Maps
   whatsappNumber: '+905527440585',
   whatsappMessage: 'Merhaba BK Kuaför, randevu ve Kérastase bakımları hakkında bilgi almak istiyorum.',
-  googleMapsIframeUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3009.684483758296!2d28.98687787654519!3d41.03698051759607!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab765057f920f%3A0xbc4b5a371c6d66e7!2zR8O8bcxZ9zdXl1LCBCZXlvxJxsdS_EsHN0YW5idWw!5e0!3m2!1str!2str!4v1717900000000!5m2!1str!2str',
-  googleMapsDirectionsUrl: 'https://maps.google.com/?q=Gümüşsuyu,Beyoğlu,İstanbul',
-  salonAddressText: 'Gümüşsuyu Mahallesi, Sıraselviler Caddesi No:42, Beyoğlu, İstanbul'
+  googleMapsIframeUrl: 'https://www.google.com/maps/place/BK+Kuaf%C3%B6r+Official/@41.0322727,29.1791411,820m/data=!3m2!1e3!4b1!4m6!3m5!1s0x14cace8ca580826f:0x5713801891782022!8m2!3d41.0322727!4d29.1791411!16s%2Fg%2F1pt_gxw91?entry=ttu&g_ep=EgoyMDI2MDkwOC4wIKXMDSoASAFQAw%3D%3D',
+  googleMapsDirectionsUrl: 'https://www.google.com/maps/place/BK+Kuaf%C3%B6r+Official/@41.0322727,29.1791411,820m/data=!3m2!1e3!4b1!4m6!3m5!1s0x14cace8ca580826f:0x5713801891782022!8m2!3d41.0322727!4d29.1791411!16s%2Fg%2F1pt_gxw91?entry=ttu&g_ep=EgoyMDI2MDkwOC4wIKXMDSoASAFQAw%3D%3D',
+  salonAddressText: 'Mimar Sinan, Mimar Sinan Cd. 51/A, 34782 Çekmeköy/İstanbul'
 };

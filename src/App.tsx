@@ -275,6 +275,16 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleRouteSync);
   }, []);
 
+  // Persistent States
+  const [webContent, setWebContent] = useState<WebContent>(() => {
+    try {
+      const saved = localStorage.getItem('salon_web_content');
+      return saved ? normalizeWebContent(JSON.parse(saved) as WebContent) : INITIAL_WEB_CONTENT;
+    } catch {
+      return INITIAL_WEB_CONTENT;
+    }
+  });
+
   // Keyboard listener for Gallery Lightbox navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -298,16 +308,6 @@ export default function App() {
       window.history.pushState({}, '', targetUrl);
     }
   };
-
-  // Persistent States
-  const [webContent, setWebContent] = useState<WebContent>(() => {
-    try {
-      const saved = localStorage.getItem('salon_web_content');
-      return saved ? normalizeWebContent(JSON.parse(saved) as WebContent) : INITIAL_WEB_CONTENT;
-    } catch {
-      return INITIAL_WEB_CONTENT;
-    }
-  });
 
   const [services, setServices] = useState<SalonService[]>(() => {
     try {

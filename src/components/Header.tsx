@@ -18,7 +18,7 @@ export default function Header({
   const salonName = webContent?.salonName || "BK KUAFÖR & BEAUTY";
   const salonSubtitle = webContent?.salonSubtitle || "Bayan Kuaförü & Kérastase Salonu";
   const salonLogoUrl = webContent?.salonLogoUrl || "/bk-logo.jpg";
-  const salonDistrictCity = webContent?.salonDistrictCity || "Beyoğlu, İstanbul";
+  const salonDistrictCity = webContent?.salonDistrictCity || "Çekmeköy, İstanbul";
   const phoneHref = webContent?.footerPhone ? `tel:${webContent.footerPhone.replace(/[^0-9+]/g, '')}` : "tel:+902122432020";
 
   // Clean, focused navbar items (excluding redundant services/booking links)
