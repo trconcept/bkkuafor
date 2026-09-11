@@ -378,16 +378,29 @@ export default function AdminDashboard({
       alert('Lütfen bir görsel dosyası seçin.');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Görsel boyutu 2MB üzerinde olmamalıdır.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Görsel boyutu 5MB üzerinde olmamalıdır.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') onLoaded(reader.result);
+    const image = new window.Image();
+    image.onload = () => {
+      const maxWidth = 1000;
+      const maxHeight = 750;
+      const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        alert('Görsel işlenemedi. Lütfen farklı bir görsel deneyin.');
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      onLoaded(canvas.toDataURL('image/jpeg', 0.78));
     };
-    reader.readAsDataURL(file);
+    image.onerror = () => alert('Görsel okunamadı. Lütfen farklı bir dosya deneyin.');
+    image.src = URL.createObjectURL(file);
   };
 
   // -------------------------------------------------------------
@@ -2435,7 +2448,7 @@ export default function AdminDashboard({
                           />
                         </label>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-1">En fazla 2MB. URL veya bilgisayarınızdan görsel seçebilirsiniz.</p>
+                      <p className="text-[10px] text-gray-400 mt-1">En fazla 5MB seçilebilir; kayıt sırasında görsel otomatik küçültülür.</p>
                     </div>
 
                     <div className="sm:col-span-3">

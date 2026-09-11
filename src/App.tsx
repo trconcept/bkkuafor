@@ -570,33 +570,41 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [adminToast]);
 
+  const persistLocalState = (key: string, value: unknown) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn(`Yerel kayıt alanı dolu veya kullanılamıyor: ${key}`, error);
+    }
+  };
+
   // Persist states
   useEffect(() => {
-    localStorage.setItem('salon_web_content', JSON.stringify(webContent));
+    persistLocalState('salon_web_content', webContent);
   }, [webContent]);
 
   useEffect(() => {
-    localStorage.setItem('salon_services', JSON.stringify(services));
+    persistLocalState('salon_services', services);
   }, [services]);
 
   useEffect(() => {
-    localStorage.setItem('salon_kerastase_products', JSON.stringify(kerastaseProducts));
+    persistLocalState('salon_kerastase_products', kerastaseProducts);
   }, [kerastaseProducts]);
 
   useEffect(() => {
-    localStorage.setItem('salon_blog_posts', JSON.stringify(blogPosts));
+    persistLocalState('salon_blog_posts', blogPosts);
   }, [blogPosts]);
 
   useEffect(() => {
-    localStorage.setItem('salon_reviews', JSON.stringify(reviews));
+    persistLocalState('salon_reviews', reviews);
   }, [reviews]);
 
   useEffect(() => {
-    localStorage.setItem('salon_stylists', JSON.stringify(stylists));
+    persistLocalState('salon_stylists', stylists);
   }, [stylists]);
 
   useEffect(() => {
-    localStorage.setItem('salon_messages', JSON.stringify(messages));
+    persistLocalState('salon_messages', messages);
   }, [messages]);
 
   // Action: Add a booking request through the server and open WhatsApp for salon approval.
