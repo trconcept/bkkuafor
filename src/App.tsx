@@ -143,6 +143,13 @@ const validateBookingAgainstAbuseRules = (input: {
 };
 
 export default function App() {
+  const serviceImageFallback = '/fiyat-tarifesi.jpg';
+  const sanitizeServices = (items: SalonService[]): SalonService[] =>
+    items.map((service) => ({
+      ...service,
+      image: service.image.startsWith('data:image/') ? serviceImageFallback : service.image,
+    }));
+
   const normalizeWebContent = (content: WebContent): WebContent => ({
     ...content,
     showcaseSubtitle: content.showcaseSubtitle === '2026 Menü Seçkisi' ? 'Menü Seçkisi' : content.showcaseSubtitle,
@@ -239,7 +246,7 @@ export default function App() {
   const [services, setServices] = useState<SalonService[]>(() => {
     try {
       const saved = localStorage.getItem('salon_services');
-      return saved ? JSON.parse(saved) : SALON_SERVICES;
+      return saved ? sanitizeServices(JSON.parse(saved) as SalonService[]) : SALON_SERVICES;
     } catch {
       return SALON_SERVICES;
     }
@@ -315,7 +322,7 @@ export default function App() {
 
       const savedServices = localStorage.getItem('salon_services');
       if (savedServices) {
-        const parsed = JSON.parse(savedServices);
+        const parsed = sanitizeServices(JSON.parse(savedServices) as SalonService[]);
         setServices((prev) => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
       }
 
@@ -574,6 +581,16 @@ export default function App() {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
+      if (key === 'salon_services') {
+        const safeServices = sanitizeServices(value as SalonService[]);
+        try {
+          localStorage.removeItem(key);
+          localStorage.setItem(key, JSON.stringify(safeServices));
+          return;
+        } catch {
+          localStorage.removeItem(key);
+        }
+      }
       console.warn(`Yerel kayıt alanı dolu veya kullanılamıyor: ${key}`, error);
     }
   };
