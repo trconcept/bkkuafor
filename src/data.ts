@@ -1361,13 +1361,13 @@ export const INITIAL_WEB_CONTENT: WebContent = {
     facebook: 'https://facebook.com',
     tiktok: 'https://tiktok.com',
     youtube: 'https://youtube.com',
-    whatsapp: '+905334567890',
+    whatsapp: '+905527440585',
     xTwitter: 'https://x.com',
     pinterest: 'https://pinterest.com'
   },
 
   // WhatsApp and Google Maps
-  whatsappNumber: '+905334567890',
+  whatsappNumber: '+905527440585',
   whatsappMessage: 'Merhaba BK Kuaför, randevu ve Kérastase bakımları hakkında bilgi almak istiyorum.',
   googleMapsIframeUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3009.684483758296!2d28.98687787654519!3d41.03698051759607!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14cab765057f920f%3A0xbc4b5a371c6d66e7!2zR8O8bcxZ9zdXl1LCBCZXlvxJxsdS_EsHN0YW5idWw!5e0!3m2!1str!2str!4v1717900000000!5m2!1str!2str',
   googleMapsDirectionsUrl: 'https://maps.google.com/?q=Gümüşsuyu,Beyoğlu,İstanbul',

@@ -653,7 +653,7 @@ export default function App() {
     triggerAdminNewAppointmentAlert(newApp);
     setSelectedServiceForBooking(null);
 
-    const whatsappNumber = webContent.socialLinks?.whatsapp || webContent.whatsappNumber || '+905334567890';
+    const whatsappNumber = webContent.socialLinks?.whatsapp || webContent.whatsappNumber || '+905527440585';
     const serviceNames = newApp.services.map((service) => service.name).join(', ');
     const message = [
       'Merhaba BK Kuaför, yeni randevu talebi var.',
