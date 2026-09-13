@@ -360,6 +360,8 @@ export default function AdminDashboard({
 
   // Statistics & Pricing states
   const [statsPeriod, setStatsPeriod] = useState<'all' | 'month' | 'year'>('all');
+  const [statsStatusFilter, setStatsStatusFilter] = useState<'all' | 'completed' | 'approved' | 'pending'>('all');
+  const [statsSearchQuery, setStatsSearchQuery] = useState<string>('');
   const [editingPriceAppId, setEditingPriceAppId] = useState<string | null>(null);
   const [manualPriceInput, setManualPriceInput] = useState<string>('');
   const [manualPriceNote, setManualPriceNote] = useState<string>('');
@@ -421,11 +423,17 @@ export default function AdminDashboard({
 
   const parseAppointmentDate = (dateStr?: string, createdAt?: string): Date => {
     if (dateStr) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        const d = new Date(`${dateStr}T00:00:00`);
+      const trimmed = dateStr.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const d = new Date(`${trimmed}T00:00:00`);
         if (!isNaN(d.getTime())) return d;
       }
-      const directDate = new Date(dateStr);
+      const dmy = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+      if (dmy) {
+        const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+        if (!isNaN(d.getTime())) return d;
+      }
+      const directDate = new Date(trimmed);
       if (!isNaN(directDate.getTime())) {
         if (directDate.getFullYear() <= 2001) {
           const fallbackYear = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
@@ -433,16 +441,11 @@ export default function AdminDashboard({
         }
         return directDate;
       }
-      const dmy = dateStr.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-      if (dmy) {
-        const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
-        if (!isNaN(d.getTime())) return d;
-      }
       const monthsMap: Record<string, number> = {
         jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
         ocak: 0, subat: 1, şubat: 1, mart: 2, nisan: 3, mayis: 4, mayıs: 4, haziran: 5, temmuz: 6, agustos: 7, ağustos: 7, eylul: 8, eylül: 8, ekim: 9, kasim: 10, kasım: 10, aralik: 11, aralık: 11
       };
-      const lower = dateStr.toLowerCase();
+      const lower = trimmed.toLowerCase();
       for (const [mName, mIndex] of Object.entries(monthsMap)) {
         if (lower.includes(mName)) {
           const dayMatch = lower.match(/\b(\d{1,2})\b/);
@@ -1237,6 +1240,8 @@ export default function AdminDashboard({
     .reduce((curr, a) => curr + (a.totalPrice || 0), 0);
 
   const totalCompletedJobs = appointments.filter((a) => a.status === 'completed').length;
+  const totalApprovedAppointments = appointments.filter((a) => a.status === 'approved').length;
+  const totalPendingAppointments = appointments.filter((a) => a.status === 'pending').length;
   const pendingAppointments = appointments.filter((a) => a.status === 'pending');
 
   const now = new Date();
@@ -1281,11 +1286,35 @@ export default function AdminDashboard({
     ? yearlyEarnings 
     : totalEarnings;
 
-  const statsRows = [...displayedAppointments].sort((a, b) => {
-    const aKey = `${a.date || '0000-00-00'}T${a.timeSlot || '00:00'}`;
-    const bKey = `${b.date || '0000-00-00'}T${b.timeSlot || '00:00'}`;
-    return bKey.localeCompare(aKey);
+  const displayedApprovedJobs = displayedAppointments.filter((a) => a.status === 'approved').length;
+  const displayedPendingJobs = displayedAppointments.filter((a) => a.status === 'pending').length;
+
+  // Filtered rows for the stats table
+  const statsRows = displayedAppointments.filter((app) => {
+    const matchesStatus = statsStatusFilter === 'all' || app.status === statsStatusFilter;
+    const query = statsSearchQuery.toLowerCase().trim();
+    if (!query) return matchesStatus;
+    const trackingCode = (app.trackingCode || app.id).toLowerCase();
+    const customerName = (app.customerName || '').toLowerCase();
+    const customerPhone = (app.customerPhone || '').toLowerCase();
+    const serviceNames = (app.services || []).map((s) => s.name.toLowerCase()).join(' ');
+    const stylistName = (app.stylist?.name || '').toLowerCase();
+    const matchesQuery = customerName.includes(query) || 
+                         trackingCode.includes(query) || 
+                         customerPhone.includes(query) ||
+                         serviceNames.includes(query) ||
+                         stylistName.includes(query);
+    return matchesStatus && matchesQuery;
+  }).sort((a, b) => {
+    const aDate = parseAppointmentDate(a.date, a.createdAt).getTime();
+    const bDate = parseAppointmentDate(b.date, b.createdAt).getTime();
+    return bDate - aDate;
   });
+
+  const statsTableTotalRevenue = statsRows
+    .filter((a) => a.status === 'approved' || a.status === 'completed')
+    .reduce((sum, a) => sum + (a.totalPrice || 0), 0);
+  const statsTableCompletedCount = statsRows.filter((a) => a.status === 'completed').length;
 
   const getStatusLabel = (status: Appointment['status']) => {
     switch (status) {
@@ -2425,8 +2454,15 @@ export default function AdminDashboard({
           <div className="bg-white rounded-3xl p-6 border border-gray-150 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
               <div>
-                <h3 className="font-sans font-black text-xl text-gray-950">İstatistikler & İşlem Özeti</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Randevu, tamamlanan işler ve kazançlarınızı anlık olarak inceleyin ve fiyatlandırın.</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.24em] text-[#a06b3e] font-black bg-[#fff5eb] px-2.5 py-1 rounded-full border border-[#f2d8be]">
+                    Raporlama & Finans
+                  </span>
+                </div>
+                <h3 className="font-sans font-black text-2xl text-gray-950 mt-1">İstatistikler & İşlem Tablosu</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Tüm tamamlanan işlemleri, seans gelirlerini ve salon randevularınızı anlık görüntüleyip yönetin.
+                </p>
               </div>
 
               {/* Period Filter Buttons */}
@@ -2434,7 +2470,7 @@ export default function AdminDashboard({
                 <button
                   type="button"
                   onClick={() => setStatsPeriod('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     statsPeriod === 'all'
                       ? 'bg-[#0f0f11] text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-950'
@@ -2445,7 +2481,7 @@ export default function AdminDashboard({
                 <button
                   type="button"
                   onClick={() => setStatsPeriod('month')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     statsPeriod === 'month'
                       ? 'bg-[#0f0f11] text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-950'
@@ -2456,7 +2492,7 @@ export default function AdminDashboard({
                 <button
                   type="button"
                   onClick={() => setStatsPeriod('year')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     statsPeriod === 'year'
                       ? 'bg-[#0f0f11] text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-950'
@@ -2468,98 +2504,209 @@ export default function AdminDashboard({
             </div>
 
             {/* Main Stats Cards for selected period */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              <div className="rounded-2xl border border-gray-150 bg-[#f8fafc] p-4 shadow-sm">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">
-                  {statsPeriod === 'all' ? 'Toplam Randevu' : statsPeriod === 'month' ? 'Aylık Randevu' : 'Yıllık Randevu'}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="rounded-2xl border border-emerald-200 bg-[#f0fdf4] p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-800 font-black">
+                    Tamamlanan İşler
+                  </div>
+                  <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                    <Check className="h-4 w-4" />
+                  </span>
+                </div>
+                <div className="mt-3 text-3xl font-black text-emerald-950">{displayedCompletedJobs}</div>
+                <div className="mt-1 text-[11px] font-medium text-emerald-700">
+                  {statsPeriod === 'all' ? 'Tüm zamanlarda tamamlanan işlem sayısı' : statsPeriod === 'month' ? 'Bu ay tamamlanan işlemler' : 'Bu yıl tamamlanan işlemler'}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-[#fffbf2] p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#a06b3e] font-black">
+                    Toplam Kazanç / Ciro
+                  </div>
+                  <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900">
+                    ₺ TL
+                  </span>
+                </div>
+                <div className="mt-3 text-3xl font-black text-gray-950">₺{displayedEarnings.toLocaleString('tr-TR')}</div>
+                <div className="mt-1 text-[11px] font-medium text-amber-800">
+                  {statsPeriod === 'all' ? 'Tamamlanan & onaylı tüm gelir' : statsPeriod === 'month' ? 'Bu ayın işlem cirosu' : 'Bu yılın işlem cirosu'}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-[#f8fafc] p-5 shadow-sm">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500 font-bold">
+                  {statsPeriod === 'all' ? 'Toplam Rezervasyon' : statsPeriod === 'month' ? 'Aylık Randevu' : 'Yıllık Randevu'}
                 </div>
                 <div className="mt-3 text-3xl font-black text-gray-950">{displayedAppointments.length}</div>
                 <div className="mt-1 text-[11px] text-gray-500">
-                  {statsPeriod === 'all' ? 'Kayıtlı toplam rezervasyon' : statsPeriod === 'month' ? 'Bu ay gelen rezervasyonlar' : 'Bu yılki tüm rezervasyonlar'}
+                  {displayedPendingJobs} bekleyen, {displayedApprovedJobs} onaylı
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-emerald-200 bg-[#f0fdf4] p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-700 font-bold">Yapılan / Tamamlanan İşler</div>
-                  <Check className="h-4 w-4 text-emerald-600" />
+              <div className="rounded-2xl border border-orange-200/70 bg-[#fff8f2] p-5 shadow-sm">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#a06b3e] font-bold">
+                  Ortalama İşlem Tutarı
                 </div>
-                <div className="mt-3 text-3xl font-black text-emerald-900">{displayedCompletedJobs}</div>
-                <div className="mt-1 text-[11px] text-emerald-700">
-                  {statsPeriod === 'all' ? 'Tamamlandı olarak işaretlenen tüm işlemler' : statsPeriod === 'month' ? 'Bu ay tamamlanan işlem sayısı' : 'Bu yıl tamamlanan işlem sayısı'}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-amber-200 bg-[#fff7ed] p-4 shadow-sm">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-800 font-bold">Toplam Kazanç</div>
-                <div className="mt-3 text-3xl font-black text-amber-950">₺{displayedEarnings.toLocaleString('tr-TR')}</div>
-                <div className="mt-1 text-[11px] text-amber-700">
-                  {statsPeriod === 'all' ? 'Onaylı ve tamamlanan tüm gelir' : statsPeriod === 'month' ? 'Bu ayın onaylı / tamamlanan geliri' : 'Bu yılın toplam cirosu'}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-orange-200 bg-[#fffaf5] p-4 shadow-sm">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#a06b3e]">Bekleyen / Aktif Randevu</div>
                 <div className="mt-3 text-3xl font-black text-gray-950">
-                  {displayedAppointments.filter(a => a.status === 'pending' || a.status === 'approved').length}
+                  ₺{displayedCompletedJobs > 0 ? Math.round(displayedEarnings / displayedCompletedJobs).toLocaleString('tr-TR') : '0'}
                 </div>
-                <div className="mt-1 text-[11px] text-gray-500">İşlem bekleyen veya onaylı randevular</div>
+                <div className="mt-1 text-[11px] text-gray-500">
+                  Tamamlanan işlem başına ortalama tutar
+                </div>
               </div>
             </div>
 
-            {/* Period Breakdown Overview Cards */}
+            {/* Period Breakdown Comparative Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="rounded-2xl border border-gray-150 bg-gray-50/80 p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">Bu Ayın Özeti</div>
+              <div className={`rounded-2xl border p-4 transition-all cursor-pointer ${
+                statsPeriod === 'month' ? 'border-[#dfa069] bg-[#fffaf5] shadow-sm' : 'border-gray-150 bg-gray-50/80 hover:bg-gray-100/70'
+              }`} onClick={() => setStatsPeriod('month')}>
+                <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">
+                  <span>Bu Ay ({new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date())})</span>
+                  {statsPeriod === 'month' && <span className="text-[9px] text-[#a06b3e] font-black">Aktif Görünüm</span>}
+                </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-xl font-black text-gray-900">₺{monthlyEarnings.toLocaleString('tr-TR')}</span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">{monthlyCompletedJobs} İşlem</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">{monthlyCompletedJobs} Tamamlanan</span>
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500">{monthlyAppointments.length} randevu kaydı</div>
               </div>
 
-              <div className="rounded-2xl border border-gray-150 bg-gray-50/80 p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">Bu Yılın Özeti</div>
+              <div className={`rounded-2xl border p-4 transition-all cursor-pointer ${
+                statsPeriod === 'year' ? 'border-[#dfa069] bg-[#fffaf5] shadow-sm' : 'border-gray-150 bg-gray-50/80 hover:bg-gray-100/70'
+              }`} onClick={() => setStatsPeriod('year')}>
+                <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">
+                  <span>Bu Yıl ({currentYear})</span>
+                  {statsPeriod === 'year' && <span className="text-[9px] text-[#a06b3e] font-black">Aktif Görünüm</span>}
+                </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-xl font-black text-gray-900">₺{yearlyEarnings.toLocaleString('tr-TR')}</span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">{yearlyCompletedJobs} İşlem</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">{yearlyCompletedJobs} Tamamlanan</span>
                 </div>
                 <div className="mt-1 text-[11px] text-gray-500">{yearlyAppointments.length} randevu kaydı</div>
               </div>
 
-              <div className="rounded-2xl border border-amber-200/70 bg-[#faf6f0] p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#a06b3e] font-bold">Genel Toplam (Tüm Zamanlar)</div>
+              <div className={`rounded-2xl border p-4 transition-all cursor-pointer ${
+                statsPeriod === 'all' ? 'border-[#dfa069] bg-[#fffaf5] shadow-sm' : 'border-amber-200/70 bg-[#faf6f0] hover:bg-amber-50/50'
+              }`} onClick={() => setStatsPeriod('all')}>
+                <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.16em] text-[#a06b3e] font-bold">
+                  <span>Genel Toplam (Tüm Zamanlar)</span>
+                  {statsPeriod === 'all' && <span className="text-[9px] text-[#a06b3e] font-black">Aktif Görünüm</span>}
+                </div>
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-xl font-black text-gray-900">₺{totalEarnings.toLocaleString('tr-TR')}</span>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full">{totalCompletedJobs} İşlem</span>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full">{totalCompletedJobs} Tamamlanan</span>
                 </div>
-                <div className="mt-1 text-[11px] text-gray-600">{appointments.length} toplam randevu</div>
+                <div className="mt-1 text-[11px] text-gray-600">{appointments.length} toplam kayıtlı randevu</div>
               </div>
             </div>
 
-            {/* Transaction Detail Table with Manual Price Entry */}
-            <div className="rounded-2xl border border-gray-150 overflow-hidden shadow-sm">
-              <div className="bg-[#0f0f11] text-[#ebd6b8] px-4 py-3 text-[10px] font-mono uppercase tracking-[0.2em] flex items-center justify-between">
-                <span>İşlem Detay Tablosu & Fiyatlandırma</span>
-                <span className="text-white/60 font-sans font-normal text-xs">Toplam {statsRows.length} kayıt</span>
+            {/* Transaction Detail Table with Filters & Manual Price Entry */}
+            <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm bg-white">
+              <div className="bg-[#0f0f11] text-white p-4 space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[#dfa069] text-[10px] font-mono uppercase tracking-[0.2em]">Kayıt Listesi</span>
+                    <h4 className="text-base font-black tracking-tight text-white">İşlem ve Randevu Detay Tablosu</h4>
+                  </div>
+
+                  {/* Search box */}
+                  <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Müşteri, takip kodu, telefon veya hizmet..."
+                      value={statsSearchQuery}
+                      onChange={(e) => setStatsSearchQuery(e.target.value)}
+                      className="w-full bg-white/10 text-white placeholder-gray-400 border border-white/20 rounded-xl pl-9 pr-3 py-1.5 text-xs outline-none focus:bg-white/20 focus:border-[#dfa069]"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Filter Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/10">
+                  <span className="text-[10px] font-mono text-gray-400 mr-1 uppercase">Filtrele:</span>
+                  <button
+                    type="button"
+                    onClick={() => setStatsStatusFilter('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      statsStatusFilter === 'all'
+                        ? 'bg-[#dfa069] text-gray-950 shadow-sm'
+                        : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                    }`}
+                  >
+                    Tümü ({displayedAppointments.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatsStatusFilter('completed')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      statsStatusFilter === 'completed'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 border border-emerald-800/40'
+                    }`}
+                  >
+                    <Check className="h-3 w-3" />
+                    <span>Tamamlanan İşler ({displayedCompletedJobs})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatsStatusFilter('approved')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      statsStatusFilter === 'approved'
+                        ? 'bg-amber-500 text-gray-950 shadow-sm'
+                        : 'bg-amber-950/60 text-amber-300 hover:bg-amber-900/80 border border-amber-800/40'
+                    }`}
+                  >
+                    Onaylananlar ({displayedApprovedJobs})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatsStatusFilter('pending')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      statsStatusFilter === 'pending'
+                        ? 'bg-orange-500 text-white shadow-sm'
+                        : 'bg-orange-950/60 text-orange-300 hover:bg-orange-900/80 border border-orange-800/40'
+                    }`}
+                  >
+                    Bekleyenler ({displayedPendingJobs})
+                  </button>
+                </div>
               </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-600">
-                  <thead className="bg-gray-50 text-gray-700">
+                  <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
                     <tr>
-                      <th className="p-3">Müşteri</th>
-                      <th className="p-3">Tarih & Saat</th>
-                      <th className="p-3">Hizmet</th>
-                      <th className="p-3">Stilist</th>
-                      <th className="p-3">Durum</th>
-                      <th className="p-3 min-w-[200px]">İşlem Ücreti & Manuel Giriş</th>
+                      <th className="p-3.5">Müşteri</th>
+                      <th className="p-3.5">Tarih & Saat</th>
+                      <th className="p-3.5">Hizmet / İşlem</th>
+                      <th className="p-3.5">Stilist</th>
+                      <th className="p-3.5">Durum</th>
+                      <th className="p-3.5 min-w-[210px]">İşlem Tutarı & Giriş</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
                     {statsRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-400">
-                          Seçili dönemde randevu veya işlem kaydı bulunamadı.
+                        <td colSpan={6} className="text-center py-10 text-gray-400">
+                          <div className="max-w-xs mx-auto space-y-1">
+                            <p className="font-bold text-gray-600">Seçili kriterde kayıt bulunamadı.</p>
+                            <p className="text-[11px]">Dönemi "Tüm Zamanlar" olarak seçebilir veya filtreyi temizleyebilirsiniz.</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStatsPeriod('all');
+                                setStatsStatusFilter('all');
+                                setStatsSearchQuery('');
+                              }}
+                              className="mt-2 text-xs font-bold text-[#a06b3e] hover:underline"
+                            >
+                              Filtreleri Sıfırla
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -2569,41 +2716,69 @@ export default function AdminDashboard({
                         const isEditingThis = editingPriceAppId === appointment.id;
 
                         return (
-                          <tr key={appointment.id} className="hover:bg-gray-50/50">
-                            <td className="p-3">
-                              <div className="font-bold text-gray-900">{appointment.customerName}</div>
-                              <div className="font-mono text-[10px] text-[#a06b3e]">{appointment.trackingCode || appointment.id}</div>
-                              <div className="text-[10px] text-gray-400 font-mono">{appointment.customerPhone}</div>
+                          <tr key={appointment.id} className="hover:bg-amber-50/20 transition-colors">
+                            <td className="p-3.5 align-top">
+                              <div className="font-bold text-gray-900 text-sm">{appointment.customerName}</div>
+                              <div className="font-mono text-[10px] text-[#a06b3e] font-bold mt-0.5">
+                                #{appointment.trackingCode || appointment.id}
+                              </div>
+                              {appointment.customerPhone && (
+                                <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+                                  {formatPhoneDisplay(appointment.customerPhone)}
+                                </div>
+                              )}
                             </td>
-                            <td className="p-3 font-mono text-[11px]">
-                              <div>{appointment.date}</div>
-                              <div className="text-[#dfa069] font-bold">{appointment.timeSlot}</div>
+                            <td className="p-3.5 align-top font-mono text-[11px]">
+                              <div className="font-bold text-gray-900">{appointment.date}</div>
+                              <div className="text-[#dfa069] font-black mt-0.5">{appointment.timeSlot}</div>
                             </td>
-                            <td className="p-3 max-w-[240px]">
+                            <td className="p-3.5 align-top max-w-[240px]">
                               <div className="flex flex-wrap gap-1">
                                 {appointment.services.map((service) => (
-                                  <span key={service.id} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] text-gray-700">
+                                  <span key={service.id} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-bold text-gray-700">
                                     {service.name}
                                   </span>
                                 ))}
                               </div>
                             </td>
-                            <td className="p-3 font-bold text-gray-800 text-[11px]">
+                            <td className="p-3.5 align-top font-bold text-gray-800 text-[11px]">
                               {appointment.stylist?.name || 'Otomatik Atandı'}
                             </td>
-                            <td className="p-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase inline-block ${
-                                appointment.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                                appointment.status === 'approved' ? 'bg-amber-100 text-[#a06b3e]' :
-                                appointment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                'bg-gray-100 text-gray-500'
-                              }`}>
-                                {getStatusLabel(appointment.status)}
-                              </span>
+                            <td className="p-3.5 align-top">
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase inline-flex items-center gap-1 ${
+                                  appointment.status === 'pending' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                                  appointment.status === 'approved' ? 'bg-amber-100 text-[#a06b3e] border border-amber-200' :
+                                  appointment.status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                  'bg-gray-100 text-gray-500 border border-gray-200'
+                                }`}>
+                                  {appointment.status === 'completed' && <Check className="h-2.5 w-2.5" />}
+                                  {getStatusLabel(appointment.status)}
+                                </span>
+
+                                {/* Quick toggle status */}
+                                {appointment.status !== 'completed' ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateStatus(appointment.id, 'completed')}
+                                    className="text-[9px] font-black uppercase text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+                                  >
+                                    ✓ Tamamlandı Yap
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateStatus(appointment.id, 'approved')}
+                                    className="text-[9px] font-bold text-gray-400 hover:text-gray-700 cursor-pointer"
+                                  >
+                                    Durumu Değiştir
+                                  </button>
+                                )}
+                              </div>
                             </td>
-                            <td className="p-3">
+                            <td className="p-3.5 align-top">
                               {isEditingThis ? (
-                                <div className="flex flex-col gap-1.5 p-2 bg-amber-50/80 border border-amber-200 rounded-xl">
+                                <div className="flex flex-col gap-1.5 p-2.5 bg-amber-50/90 border border-amber-300 rounded-xl shadow-sm">
                                   <div className="flex items-center gap-1">
                                     <span className="text-xs font-bold text-gray-700 font-mono">₺</span>
                                     <input
@@ -2648,15 +2823,15 @@ export default function AdminDashboard({
                                     value={manualPriceNote}
                                     onChange={(e) => setManualPriceNote(e.target.value)}
                                     placeholder="Fiyat notu (opsiyonel: Saç boyası + bakım)"
-                                    className="w-full border border-gray-200 rounded-lg px-2 py-0.5 text-[10px] bg-white outline-none"
+                                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-[10px] bg-white outline-none"
                                   />
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-between gap-2">
                                   <div>
-                                    <div className="font-mono font-bold text-gray-900 text-xs">{priceLabel}</div>
+                                    <div className="font-mono font-black text-gray-950 text-sm">{priceLabel}</div>
                                     {appointment.priceNote && (
-                                      <div className="text-[10px] text-gray-500 italic">{appointment.priceNote}</div>
+                                      <div className="text-[10px] text-gray-500 italic mt-0.5">{appointment.priceNote}</div>
                                     )}
                                     {isUnpriced && (
                                       <span className="inline-block mt-0.5 text-[10px] text-red-600 font-mono font-bold uppercase bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
@@ -2671,9 +2846,9 @@ export default function AdminDashboard({
                                       setManualPriceInput(appointment.totalPrice ? String(appointment.totalPrice) : '');
                                       setManualPriceNote(appointment.priceNote || '');
                                     }}
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap cursor-pointer ${
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap cursor-pointer ${
                                       isUnpriced
-                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 shadow-xs'
                                         : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                     }`}
                                   >
@@ -2687,6 +2862,18 @@ export default function AdminDashboard({
                       })
                     )}
                   </tbody>
+                  {statsRows.length > 0 && (
+                    <tfoot className="bg-gray-50 font-bold text-gray-900 border-t border-gray-200">
+                      <tr>
+                        <td colSpan={4} className="p-3.5 text-xs">
+                          Listelenen Toplam: <span className="font-mono text-[#a06b3e]">{statsRows.length} Kayıt</span> | Tamamlanan: <span className="font-mono text-emerald-700">{statsTableCompletedCount} İşlem</span>
+                        </td>
+                        <td colSpan={2} className="p-3.5 text-right font-mono text-xs">
+                          Tablo Toplam Geliri: <span className="text-sm font-black text-gray-950">₺{statsTableTotalRevenue.toLocaleString('tr-TR')}</span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             </div>
