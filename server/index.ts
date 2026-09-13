@@ -1285,6 +1285,20 @@ const cleanupTimer = setInterval(() => {
 cleanupTimer.unref();
 
 const start = async () => {
+  // Google Search Console doğrulama dosyasını doğrudan ve aracısız sunma
+  app.get(/^\/google([a-zA-Z0-9]+)\.html$/, (req, res) => {
+    const filename = req.path.replace(/^\//, '');
+    const publicPath = path.join(process.cwd(), 'public', filename);
+    const distPath = path.join(process.cwd(), 'dist', filename);
+    if (fs.existsSync(publicPath)) {
+      return res.type('text/html').sendFile(publicPath);
+    }
+    if (fs.existsSync(distPath)) {
+      return res.type('text/html').sendFile(distPath);
+    }
+    return res.type('text/html').send(`google-site-verification: ${filename}\n`);
+  });
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import('vite');
