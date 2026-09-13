@@ -2696,8 +2696,8 @@ export default function AdminDashboard({
                 </div>
                 <p className="text-xs text-gray-600 max-w-2xl">
                   {webContent.kscanComingSoon !== false
-                    ? 'Şu an Kérastase sayfasında sağ üstte çapraz "YAKINDA SİZLERLE" rozeti görünür ve müşterilerin henüz gelmeyen cihaza randevu alması engellenir.'
-                    : 'Cihaz anlaşması tamamlanıp salona geldiğinde bu modu kapatabilirsiniz; müşteriler K-SCAN randevusu alabilir.'}
+                    ? 'Şu an Kérastase sayfasında sağ üstte "YAKINDA SİZLERLE" rozeti görünür ve müşterilerin henüz kurulumu tamamlanmamış cihaza randevu alması önlenir.'
+                    : 'Cihaz salona kurulup hazır olduğunda bu modu kapatabilirsiniz; müşteriler doğrudan K-SCAN saç analizi randevusu alabilir.'}
                 </p>
               </div>
 

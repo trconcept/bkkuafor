@@ -1446,6 +1446,7 @@ export default function App() {
                 onAddAppointment={handleAddAppointment}
                 initialSelectedService={selectedServiceForBooking}
                 onGoToMyAppointments={() => changeSectionWithUrl('my-appointments')}
+                kscanComingSoon={webContent.kscanComingSoon !== false}
               />
             </motion.div>
           )}

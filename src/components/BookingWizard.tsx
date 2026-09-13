@@ -18,6 +18,7 @@ interface BookingWizardProps {
   onAddAppointment: (appointment: BookingSubmission) => Promise<string> | string;
   initialSelectedService?: SalonService | null;
   onGoToMyAppointments?: () => void;
+  kscanComingSoon?: boolean;
 }
 
 export default function BookingWizard({
@@ -26,7 +27,8 @@ export default function BookingWizard({
   slotOptions,
   onAddAppointment,
   initialSelectedService = null,
-  onGoToMyAppointments
+  onGoToMyAppointments,
+  kscanComingSoon = true
 }: BookingWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<SalonService[]>(() => {
@@ -376,34 +378,50 @@ export default function BookingWizard({
                           </div>
                         ) : (
                           filteredServices.map((serv) => {
+                            const isKscanService = serv.id === 'srv-ozel-2' || serv.name.toLowerCase().includes('k-scan');
+                            const isServiceDisabled = isKscanService && kscanComingSoon;
                             const isSelected = selectedServices.some((s) => s.id === serv.id);
-                            const priceLabel = serv.showPrice === false 
-                              ? 'Fiyat Danışınız' 
-                              : (serv.customPriceText || (serv.price ? `₺${serv.price}` : 'SERBEST'));
+                            const priceLabel = isServiceDisabled
+                              ? 'Yakında'
+                              : (serv.showPrice === false 
+                                ? 'Fiyat Danışınız' 
+                                : (serv.customPriceText || (serv.price ? `₺${serv.price}` : 'SERBEST')));
 
                             return (
                               <div
                                 key={serv.id}
-                                onClick={() => handleToggleService(serv)}
+                                onClick={() => {
+                                  if (isServiceDisabled) return;
+                                  handleToggleService(serv);
+                                }}
                                 id={`wizard-check-${serv.id}`}
-                                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex gap-3 ${
-                                  isSelected
-                                    ? 'border-[#dfa069] bg-amber-50/25 shadow-sm'
-                                    : 'border-gray-150 hover:border-gray-200 bg-gray-50/40 hover:bg-white'
+                                className={`p-3.5 rounded-2xl border-2 transition-all flex gap-3 ${
+                                  isServiceDisabled
+                                    ? 'border-gray-200 bg-gray-100/70 opacity-65 cursor-not-allowed'
+                                    : isSelected
+                                      ? 'border-[#dfa069] bg-amber-50/25 shadow-sm cursor-pointer'
+                                      : 'border-gray-150 hover:border-gray-200 bg-gray-50/40 hover:bg-white cursor-pointer'
                                 }`}
                               >
                                 <div className={`h-5 w-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                  isSelected ? 'bg-[#dfa069] border-[#dfa069] text-gray-900 font-bold' : 'border-gray-300 bg-white'
+                                  isServiceDisabled
+                                    ? 'border-gray-300 bg-gray-200 text-gray-400'
+                                    : isSelected ? 'bg-[#dfa069] border-[#dfa069] text-gray-900 font-bold' : 'border-gray-300 bg-white'
                                 }`}>
-                                  {isSelected && <span className="text-[10px]">✓</span>}
+                                  {isSelected && !isServiceDisabled && <span className="text-[10px]">✓</span>}
+                                  {isServiceDisabled && <span className="text-[10px]">✕</span>}
                                 </div>
 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between items-baseline gap-1">
                                     <h4 className="font-sans font-bold text-xs text-gray-900 truncate">{serv.name}</h4>
-                                    <span className="font-sans font-black text-xs text-[#a06b3e] shrink-0 font-mono">{priceLabel}</span>
+                                    <span className={`font-sans font-black text-xs shrink-0 font-mono ${isServiceDisabled ? 'text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md text-[10px]' : 'text-[#a06b3e]'}`}>
+                                      {priceLabel}
+                                    </span>
                                   </div>
-                                  <p className="text-gray-500 text-[11px] leading-relaxed line-clamp-1 mt-0.5">{serv.description}</p>
+                                  <p className="text-gray-500 text-[11px] leading-relaxed line-clamp-1 mt-0.5">
+                                    {isServiceDisabled ? 'Bu cihaz yakında salonumuzda hizmete girecektir. Şu an randevuya kapalıdır.' : serv.description}
+                                  </p>
                                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-400 mt-1.5">
                                     <Clock className="h-3 w-3 text-gray-400" />
                                     <span>{serv.duration} Dakika</span>

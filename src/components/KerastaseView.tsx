@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Search, Layers, CheckCircle, ArrowRight, ShieldCheck, Cpu, Droplets, Star, Zap, ChevronRight, ChevronLeft, Clock, Sparkle } from 'lucide-react';
 import { KerastaseProduct } from '../types';
@@ -44,6 +44,8 @@ const KERASTASE_VIDEOS = [
   'WhatsApp Video 2026-08-26 at 16.12.33.mp4',
 ].map((fileName) => `/kerastase-videos/${encodeURIComponent(fileName)}`);
 
+const PRODUCTS_PER_PAGE = 12;
+
 export default function KerastaseView({
   products,
   onBookKerastaseService,
@@ -53,8 +55,10 @@ export default function KerastaseView({
   const [selectedSeries, setSelectedSeries] = useState<string>('all');
   const [selectedStep, setSelectedStep] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [videoIndex, setVideoIndex] = useState(() => Math.floor(Math.random() * KERASTASE_VIDEOS.length));
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const catalogTopRef = useRef<HTMLDivElement>(null);
 
   // Extract unique series list
   const seriesList = useMemo(() => {
@@ -74,6 +78,25 @@ export default function KerastaseView({
       return matchSeries && matchStep && matchQuery;
     });
   }, [products, selectedSeries, selectedStep, searchQuery]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSeries, selectedStep, searchQuery]);
+
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    if (catalogTopRef.current) {
+      catalogTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -138,6 +161,7 @@ export default function KerastaseView({
           <div className="flex flex-wrap gap-3 pt-2">
             {onBookKerastaseService && (
               <button
+                type="button"
                 onClick={() => onBookKerastaseService()}
                 className="px-6 py-3.5 bg-gradient-to-r from-[#dfa069] to-[#cba358] hover:opacity-95 text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer"
               >
@@ -156,15 +180,111 @@ export default function KerastaseView({
         </div>
       </div>
 
-      {/* 2. Premium editorial spacing instead of the three-card ritual block */}
-      <div className="h-1" aria-hidden="true" />
+      {/* 2. Dedicated K-SCAN AI Diagnostic Spotlight Section (Görünürlüğü artırmak için ürün kataloğunun üstüne alındı) */}
+      <div
+        id="kscan-section"
+        className="rounded-3xl bg-gradient-to-br from-[#121216] via-[#1a1a22] to-[#0c0c0e] text-white p-6 sm:p-10 lg:p-12 border border-[#2d2d38] shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-8 justify-between scroll-mt-24"
+      >
+        {/* Diagonal Corner Ribbon if Coming Soon */}
+        {kscanComingSoon && (
+          <div className="absolute top-0 right-0 w-44 h-44 overflow-hidden pointer-events-none z-30">
+            <div className="absolute top-7 -right-12 w-52 py-1.5 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-gray-950 text-[10px] font-black font-mono tracking-widest uppercase text-center rotate-45 shadow-lg border-y border-amber-300/40">
+              {kscanBadgeText || "YAKINDA SİZLERLE"}
+            </div>
+          </div>
+        )}
+
+        <div className="relative z-10 max-w-xl space-y-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
+              <Cpu className="h-3.5 w-3.5 mr-1" />
+              YAPAY ZEKÂ DESTEKLİ SAÇ DERİSİ VE SAÇ ANALİZİ
+            </div>
+            {kscanComingSoon && (
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-400/20 border border-amber-400/40 rounded-full text-amber-200 text-xs font-mono font-black uppercase tracking-wider animate-pulse">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Hazırlık Aşamasında</span>
+              </span>
+            )}
+          </div>
+
+          <h2 className="font-sans font-black text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight leading-tight">
+            K-SCAN Akıllı Teşhis Kamerası ile Saçınızı Mikroskobik Düzeyde Tanıyın
+          </h2>
+
+          <p className="text-gray-400 text-xs sm:text-sm leading-relaxed">
+            K-SCAN, yalnızca yetkili Kérastase salonlarında bulunan yenilikçi bir akıllı kameradır. Gelişmiş yapay zekâ teknolojisiyle saç derinizi ve tellerinizi 100 kat büyüterek analiz eder ve size özel Fusio-Dose bakım reçetenizi saniyeler içinde oluşturur.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs font-mono">
+            <div className="bg-[#22222c] p-3 rounded-xl border border-gray-800">
+              <span className="text-[#dfa069] font-bold block text-sm">100x Zoom</span>
+              <span className="text-gray-400 text-[10px]">Mikroskopik Kök Analizi</span>
+            </div>
+            <div className="bg-[#22222c] p-3 rounded-xl border border-gray-800">
+              <span className="text-[#4ade80] font-bold block text-sm">%100 Kişisel</span>
+              <span className="text-gray-400 text-[10px]">Fusio-Dose Kokteyl Reçetesi</span>
+            </div>
+          </div>
+
+          {/* Action Area: K-SCAN aktif değilken buton kesinlikle randevu açmaz, pasif bilgilendirici badge olarak kalır */}
+          {kscanComingSoon ? (
+            <div className="pt-1 flex flex-wrap items-center gap-3">
+              <div
+                className="w-full sm:w-auto px-5 py-3.5 bg-[#1c1c24] text-amber-300/90 border border-amber-500/30 font-bold text-xs rounded-xl flex items-center justify-center space-x-2 cursor-not-allowed select-none shadow-inner"
+                title="K-SCAN akıllı analiz cihazı kurulum aşamasında olduğu için randevular henüz açılmamıştır."
+              >
+                <Clock className="h-4 w-4 text-amber-400 animate-pulse" />
+                <span>K-SCAN Randevuları Çok Yakında Başlıyor (Hazırlanıyor)</span>
+              </div>
+            </div>
+          ) : (
+            onBookKerastaseService && (
+              <button
+                type="button"
+                onClick={() => onBookKerastaseService('K-SCAN Saç Analizi')}
+                className="px-6 py-3.5 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer hover:opacity-95"
+              >
+                <span>Ücretsiz K-SCAN Randevusu Al</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Right side teaser box */}
+        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border border-gray-800 bg-[#16161d] p-6 space-y-4 shrink-0 shadow-2xl">
+          <div className="flex items-center space-x-3 border-b border-gray-800 pb-3">
+            <div className="h-10 w-10 bg-amber-500/10 text-[#dfa069] rounded-xl flex items-center justify-center font-bold">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="font-sans font-bold text-sm text-white">Fusio-Dose Kokteyl</h4>
+              <span className="text-[10px] text-gray-400 font-mono">Kişiselleştirilmiş Salon Terapisi</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            K-SCAN analizi sonrası saçınızın birincil ihtiyacı (Konsantre) ve ikincil ihtiyacı (Booster) belirlenerek gözünüzün önünde anında harmanlanır ve saçınıza uygulanır.
+          </p>
+          <div className="bg-amber-500/10 text-[#ebd6b8] p-3 rounded-xl border border-amber-500/20 text-xs font-mono font-bold flex items-center justify-between">
+            <span>Uygulama Süresi:</span>
+            <span className="text-white">15 Dakika</span>
+          </div>
+        </div>
+      </div>
 
       {/* 3. Filters and Search Bar */}
-      <div className="bg-[#f5efe9]/80 backdrop-blur-md rounded-[2rem] p-6 border border-[#e8dcc6]/80 shadow-[0_18px_45px_rgba(16,12,10,0.08)] space-y-5" id="kerastase-filters-box">
+      <div 
+        ref={catalogTopRef}
+        className="bg-[#f5efe9]/80 backdrop-blur-md rounded-[2rem] p-6 border border-[#e8dcc6]/80 shadow-[0_18px_45px_rgba(16,12,10,0.08)] space-y-5 scroll-mt-20" 
+        id="kerastase-filters-box"
+      >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="font-sans font-black text-xl text-gray-950 tracking-tight">Kérastase Ürün Kataloğu</h2>
-            <p className="text-xs text-gray-500 mt-0.5">İhtiyacınıza uygun seriyi veya bakım adımını seçerek filtreleyebilirsiniz ({filteredProducts.length} Ürün Listeleniyor).</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              İhtiyacınıza uygun seriyi veya bakım adımını seçerek filtreleyebilirsiniz ({filteredProducts.length} Ürün Mevcut • Sayfa {currentPage}/{totalPages}).
+            </p>
           </div>
 
           {/* Search Box */}
@@ -188,6 +308,7 @@ export default function KerastaseView({
             </span>
             <div className="flex items-center space-x-1">
               <button
+                type="button"
                 onClick={() => handleScroll('left')}
                 className="p-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
                 title="Sola Kaydır"
@@ -195,6 +316,7 @@ export default function KerastaseView({
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={() => handleScroll('right')}
                 className="p-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
                 title="Sağa Kaydır"
@@ -214,6 +336,7 @@ export default function KerastaseView({
               return (
                 <button
                   key={ser}
+                  type="button"
                   onClick={() => setSelectedSeries(ser)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap flex-shrink-0 min-w-max transition-all cursor-pointer ${
                     isSelected
@@ -242,6 +365,7 @@ export default function KerastaseView({
           ].map((st) => (
             <button
               key={st.id}
+              type="button"
               onClick={() => setSelectedStep(st.id)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedStep === st.id
@@ -255,10 +379,10 @@ export default function KerastaseView({
         </div>
       </div>
 
-      {/* 4. Products Grid with Image Covers */}
+      {/* 4. Products Grid with Image Covers (Sayfa Başına 12 Ürün) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="kerastase-products-grid">
-        <AnimatePresence>
-          {filteredProducts.length === 0 ? (
+        <AnimatePresence mode="popLayout">
+          {paginatedProducts.length === 0 ? (
             <div className="col-span-full text-center py-16 bg-white rounded-3xl border border-gray-150">
               <span className="text-4xl">🧴</span>
               <h4 className="font-sans font-bold text-lg text-gray-900 mt-3">Eşleşen Kérastase Ürünü Bulunamadı</h4>
@@ -267,7 +391,7 @@ export default function KerastaseView({
               </p>
             </div>
           ) : (
-            filteredProducts.map((prod) => (
+            paginatedProducts.map((prod) => (
               <motion.div
                 key={prod.id}
                 initial={{ opacity: 0, y: 15 }}
@@ -344,6 +468,7 @@ export default function KerastaseView({
                   </span>
                   {onBookKerastaseService && (
                     <button
+                      type="button"
                       onClick={() => onBookKerastaseService(prod.name)}
                       className="px-4 py-2 bg-[#0f0f11] hover:bg-[#dfa069] text-white hover:text-gray-950 text-xs font-black rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer shadow-sm"
                     >
@@ -358,116 +483,68 @@ export default function KerastaseView({
         </AnimatePresence>
       </div>
 
-      {/* 5. Dedicated K-SCAN AI Diagnostic Spotlight Section */}
-      <div
-        id="kscan-section"
-        className="rounded-3xl bg-gradient-to-br from-[#121216] via-[#1a1a22] to-[#0c0c0e] text-white p-8 sm:p-12 lg:p-16 border border-[#2d2d38] shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-10 justify-between"
-      >
-        {/* Diagonal Corner Ribbon if Coming Soon */}
-        {kscanComingSoon && (
-          <div className="absolute top-0 right-0 w-44 h-44 overflow-hidden pointer-events-none z-30">
-            <div className="absolute top-7 -right-12 w-52 py-1.5 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-gray-950 text-[10px] font-black font-mono tracking-widest uppercase text-center rotate-45 shadow-lg border-y border-amber-300/40">
-              {kscanBadgeText || "YAKINDA SİZLERLE"}
-            </div>
-          </div>
-        )}
-
-        <div className="relative z-10 max-w-xl space-y-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
-              <Cpu className="h-3.5 w-3.5 mr-1" />
-              YAPAY ZEKÂ DESTEKLİ SAÇ DERİSİ VE SAÇ ANALİZİ
-            </div>
-            {kscanComingSoon && (
-              <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-400/20 border border-amber-400/40 rounded-full text-amber-200 text-xs font-mono font-black uppercase tracking-wider animate-pulse">
-                <Clock className="h-3.5 w-3.5" />
-                <span>Hazırlık Aşamasında</span>
-              </span>
-            )}
+      {/* 5. Pagination Navigation Bar (Sayfa Sayıları ve İleri/Geri) */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-[#e8dcc6] shadow-sm">
+          <div className="text-xs text-gray-600 font-medium">
+            Toplam <span className="font-bold text-gray-950">{filteredProducts.length}</span> ürün içerisinden{' '}
+            <span className="font-bold text-gray-950">{(currentPage - 1) * PRODUCTS_PER_PAGE + 1} - {Math.min(currentPage * PRODUCTS_PER_PAGE, filteredProducts.length)}</span> arası gösteriliyor.
           </div>
 
-          <h2 className="font-sans font-black text-3xl sm:text-4xl text-white tracking-tight leading-tight">
-            K-SCAN Akıllı Teşhis Kamerası ile Saçınızı Mikroskobik Düzeyde Tanıyın
-          </h2>
+          <div className="flex items-center gap-1.5">
+            {/* Previous Page Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                currentPage === 1
+                  ? 'text-gray-300 bg-gray-50 cursor-not-allowed border border-gray-100'
+                  : 'text-gray-800 bg-white hover:bg-gray-100 border border-gray-200 cursor-pointer shadow-sm'
+              }`}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Önceki</span>
+            </button>
 
-          <p className="text-gray-400 text-sm leading-relaxed">
-            K-SCAN, yalnızca yetkili Kérastase salonlarında bulunan yenilikçi bir akıllı kameradır. Gelişmiş yapay zekâ teknolojisiyle saç derinizi ve tellerinizi 100 kat büyüterek analiz eder ve size özel Fusio-Dose bakım reçetenizi saniyeler içinde oluşturur.
-          </p>
-
-          {/* Coming soon notice box when active */}
-          {kscanComingSoon && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-amber-200/90 text-xs leading-relaxed">
-              <Sparkle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-amber-300 block font-sans font-bold">Salonumuz İçin Anlaşma Sürecinde:</strong>
-                K-SCAN akıllı analiz cihazımız çok yakında salonumuzda hizmetinize sunulacaktır. Cihaz kurulumu tamamlandığında randevu alımı aktif edilecektir; şu anda diğer tüm Kérastase bakım ritüellerimizden randevu alabilirsiniz.
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4 text-xs font-mono">
-            <div className="bg-[#22222c] p-3 rounded-xl border border-gray-800">
-              <span className="text-[#dfa069] font-bold block text-sm">100x Zoom</span>
-              <span className="text-gray-400 text-[10px]">Mikroskopik Kök Analizi</span>
-            </div>
-            <div className="bg-[#22222c] p-3 rounded-xl border border-gray-800">
-              <span className="text-[#4ade80] font-bold block text-sm">%100 Kişisel</span>
-              <span className="text-gray-400 text-[10px]">Fusio-Dose Kokteyl Reçetesi</span>
-            </div>
-          </div>
-
-          {kscanComingSoon ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-5 py-3 bg-[#22222b] text-gray-400 border border-gray-700 font-bold text-xs rounded-xl flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-amber-400" />
-                <span>K-SCAN Randevuları Çok Yakında Başlıyor</span>
-              </div>
-              {onBookKerastaseService && (
+            {/* Numeric Page Buttons */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+              const isActive = pageNum === currentPage;
+              return (
                 <button
+                  key={pageNum}
                   type="button"
-                  onClick={() => onBookKerastaseService('Kérastase Özel Bakım Ritüeli')}
-                  className="px-5 py-3 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer hover:opacity-95"
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                    isActive
+                      ? 'bg-[#0f0f11] text-[#ebd6b8] shadow-md ring-2 ring-[#dfa069]/30 font-black'
+                      : 'bg-white text-gray-700 hover:bg-[#faf8f5] hover:text-black border border-gray-200'
+                  }`}
                 >
-                  <span>Mevcut Bakımlara Randevu Al</span>
-                  <ArrowRight className="h-4 w-4" />
+                  {pageNum}
                 </button>
-              )}
-            </div>
-          ) : (
-            onBookKerastaseService && (
-              <button
-                type="button"
-                onClick={() => onBookKerastaseService('K-SCAN Saç Analizi')}
-                className="px-6 py-3.5 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer"
-              >
-                <span>Ücretsiz K-SCAN Randevusu Al</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )
-          )}
-        </div>
+              );
+            })}
 
-        {/* Right side teaser box */}
-        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border border-gray-800 bg-[#16161d] p-6 space-y-4 shrink-0 shadow-2xl">
-          <div className="flex items-center space-x-3 border-b border-gray-800 pb-3">
-            <div className="h-10 w-10 bg-amber-500/10 text-[#dfa069] rounded-xl flex items-center justify-center font-bold">
-              <Zap className="h-5 w-5" />
-            </div>
-            <div>
-              <h4 className="font-sans font-bold text-sm text-white">Fusio-Dose Kokteyl</h4>
-              <span className="text-[10px] text-gray-400 font-mono">Kişiselleştirilmiş Salon Terapisi</span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            K-SCAN analizi sonrası saçınızın birincil ihtiyacı (Konsantre) ve ikincil ihtiyacı (Booster) belirlenerek gözünüzün önünde anında harmanlanır ve saçınıza uygulanır.
-          </p>
-          <div className="bg-amber-500/10 text-[#ebd6b8] p-3 rounded-xl border border-amber-500/20 text-xs font-mono font-bold flex items-center justify-between">
-            <span>Uygulama Süresi:</span>
-            <span className="text-white">15 Dakika</span>
+            {/* Next Page Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                currentPage === totalPages
+                  ? 'text-gray-300 bg-gray-50 cursor-not-allowed border border-gray-100'
+                  : 'text-gray-800 bg-white hover:bg-gray-100 border border-gray-200 cursor-pointer shadow-sm'
+              }`}
+            >
+              <span className="hidden sm:inline">Sonraki</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );
 }
+
