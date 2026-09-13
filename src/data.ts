@@ -1379,5 +1379,10 @@ export const INITIAL_WEB_CONTENT: WebContent = {
   whatsappMessage: 'Merhaba BK Kuaför, randevu ve Kérastase bakımları hakkında bilgi almak istiyorum.',
   googleMapsIframeUrl: 'https://www.google.com/maps/place/BK+Kuaf%C3%B6r+Official/@41.0322727,29.1791411,820m/data=!3m2!1e3!4b1!4m6!3m5!1s0x14cace8ca580826f:0x5713801891782022!8m2!3d41.0322727!4d29.1791411!16s%2Fg%2F1pt_gxw91?entry=ttu&g_ep=EgoyMDI2MDkwOC4wIKXMDSoASAFQAw%3D%3D',
   googleMapsDirectionsUrl: 'https://www.google.com/maps/place/BK+Kuaf%C3%B6r+Official/@41.0322727,29.1791411,820m/data=!3m2!1e3!4b1!4m6!3m5!1s0x14cace8ca580826f:0x5713801891782022!8m2!3d41.0322727!4d29.1791411!16s%2Fg%2F1pt_gxw91?entry=ttu&g_ep=EgoyMDI2MDkwOC4wIKXMDSoASAFQAw%3D%3D',
-  salonAddressText: 'Mimar Sinan, Mimar Sinan Cd. 51/A, 34782 Çekmeköy/İstanbul'
+  salonAddressText: 'Mimar Sinan, Mimar Sinan Cd. 51/A, 34782 Çekmeköy/İstanbul',
+
+  // Modüler Bölüm Kontrolleri
+  kscanComingSoon: true,
+  kscanBadgeText: 'ÇOK YAKINDA SALONUMUZDA',
+  showStylistsSection: true
 };

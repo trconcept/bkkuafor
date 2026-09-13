@@ -4,7 +4,7 @@ import {
   Scissors, Calendar, Clock, Lock, Sparkles, Phone, ShieldCheck, 
   Mail, ArrowRight, Star, Heart, CheckCircle, HelpCircle, MapPin,
   MessageCircle, Navigation, Instagram, Facebook, Video, Twitter, ChevronDown,
-  BellRing, X, ChevronLeft, ChevronRight, Play, Maximize2
+  BellRing, X, ChevronLeft, ChevronRight, Play, Maximize2, Image as ImageIcon, Film, Eye
 } from 'lucide-react';
 import Header from './components/Header';
 import ServiceCard from './components/ServiceCard';
@@ -309,6 +309,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<SalonService | null>(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
+  const [galleryFilter, setGalleryFilter] = useState<'all' | 'image' | 'video'>('all');
 
   // Secure admin token state
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -1125,31 +1126,33 @@ export default function App() {
               </div>
 
               {/* STYLIST SPECIALISTS */}
-              <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-150 space-y-6 text-center shadow-sm" id="home-stylists-intro">
-                <div className="max-w-xl mx-auto space-y-2">
-                  <span className="text-xs text-[#dfa069] font-black font-mono uppercase tracking-widest">{webContent.stylistsSubtitle || "Sanatçılarımız"}</span>
-                  <h2 className="font-sans font-black text-2xl text-gray-950 tracking-tight">{webContent.stylistsTitle || "Kusursuz Makası Kullanan Usta Eller"}</h2>
-                  <p className="text-gray-500 text-xs">{webContent.stylistsDesc || "Uluslararası akademilerden ödüllü uzman vizajist ve baş stilistlerimizle tanışın."}</p>
-                </div>
+              {webContent.showStylistsSection !== false && (
+                <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-150 space-y-6 text-center shadow-sm" id="home-stylists-intro">
+                  <div className="max-w-xl mx-auto space-y-2">
+                    <span className="text-xs text-[#dfa069] font-black font-mono uppercase tracking-widest">{webContent.stylistsSubtitle || "Sanatçılarımız"}</span>
+                    <h2 className="font-sans font-black text-2xl text-gray-950 tracking-tight">{webContent.stylistsTitle || "Kusursuz Makası Kullanan Usta Eller"}</h2>
+                    <p className="text-gray-500 text-xs">{webContent.stylistsDesc || "Uluslararası akademilerden ödüllü uzman vizajist ve baş stilistlerimizle tanışın."}</p>
+                  </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="stylist-grid">
-                  {visibleStylists.map((sty) => (
-                    <div key={sty.id} className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-3 flex flex-col items-center">
-                      <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-[#ebd6b8]">
-                        <img src={sty.avatar} alt={sty.name} className="w-full h-full object-cover" />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="stylist-grid">
+                    {visibleStylists.map((sty) => (
+                      <div key={sty.id} className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-3 flex flex-col items-center">
+                        <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-[#ebd6b8]">
+                          <img src={sty.avatar} alt={sty.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="text-center">
+                          <h4 className="font-sans font-extrabold text-sm text-[#0f0f11] truncate">{sty.name}</h4>
+                          <span className="text-[10px] text-[#a06b3e] font-bold block mt-0.5 truncate uppercase font-mono">{sty.role.split(' ')[0]}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-amber-500 text-xs font-bold bg-white py-0.5 px-2 rounded-full border border-gray-150">
+                          <Star className="h-3 w-3 fill-current" />
+                          <span>{sty.rating}</span>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <h4 className="font-sans font-extrabold text-sm text-[#0f0f11] truncate">{sty.name}</h4>
-                        <span className="text-[10px] text-[#a06b3e] font-bold block mt-0.5 truncate uppercase font-mono">{sty.role.split(' ')[0]}</span>
-                      </div>
-                      <div className="flex items-center space-x-1 text-amber-500 text-xs font-bold bg-white py-0.5 px-2 rounded-full border border-gray-150">
-                        <Star className="h-3 w-3 fill-current" />
-                        <span>{sty.rating}</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* REVIEWS & QUICK CONSULTATION SPLIT */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start" id="home-reviews-contact-split">
@@ -1407,6 +1410,8 @@ export default function App() {
               <KerastaseView
                 products={kerastaseProducts}
                 onBookKerastaseService={handleSelectSpecialBooking}
+                kscanComingSoon={webContent.kscanComingSoon ?? true}
+                kscanBadgeText={webContent.kscanBadgeText}
               />
             </motion.div>
           )}
@@ -1462,7 +1467,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* G. GALERİ VIEW */}
+          {/* G. GALERİ VIEW (MODERN & PROFESYONEL SANAT GALERİSİ) */}
           {activeSection === 'gallery' && (
             <motion.div
               key="gallery-section"
@@ -1472,133 +1477,188 @@ export default function App() {
               className="space-y-8"
               id="gallery-layout"
             >
-              <div className="rounded-[2rem] border border-[#d6c9ab] bg-[#f3efe5] p-4 sm:p-6 lg:p-8 shadow-[0_24px_80px_rgba(15,15,17,0.08)]">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="rounded-[2.5rem] border border-[#d6c9ab]/70 bg-gradient-to-b from-[#faf7f2] to-[#f4ede4] p-5 sm:p-8 lg:p-10 shadow-[0_24px_80px_rgba(15,15,17,0.07)]">
+                {/* Header with Title and Filter Tabs */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#e2d8c3]">
                   <div className="space-y-2">
-                    <span className="text-xs text-[#a06b3e] font-black font-mono uppercase tracking-[0.24em]">
-                      {webContent.gallerySubtitle || "Çalışmalarımız"}
-                    </span>
-                    <h3 className="font-sans font-black text-2xl sm:text-4xl text-[#0f0f11] tracking-tight">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#dfa069]/15 text-[#915828] text-[10px] font-black font-mono tracking-[0.2em] uppercase border border-[#dfa069]/30">
+                      <Sparkles className="h-3 w-3" />
+                      <span>{webContent.gallerySubtitle || "Çalışmalarımız & Değişimler"}</span>
+                    </div>
+                    <h2 className="font-sans font-black text-2xl sm:text-4xl text-[#0f0f11] tracking-tight">
                       {webContent.galleryTitle || "BK Kuaför Sanat Galerisi"}
-                    </h3>
+                    </h2>
+                    <p className="text-xs text-gray-600 max-w-xl">
+                      Salonumuzda hayata geçirilen en son saç renklendirme, kesim, gelin tasarımı ve stüdyo videolarını inceleyin.
+                    </p>
                   </div>
-                  <div className="inline-flex items-center gap-2 bg-[#0f0f11] text-[#ebd6b8] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.18em] font-mono">
-                    Portfolio
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-2 bg-[#eae3d5] p-1.5 rounded-2xl self-start md:self-auto border border-[#d9ccb5]">
+                    <button
+                      type="button"
+                      onClick={() => setGalleryFilter('all')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        galleryFilter === 'all'
+                          ? 'bg-[#0f0f11] text-[#ebd6b8] shadow-md'
+                          : 'text-gray-700 hover:text-black hover:bg-white/60'
+                      }`}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Tümü ({(webContent.galleryItems || []).length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGalleryFilter('image')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        galleryFilter === 'image'
+                          ? 'bg-[#0f0f11] text-[#ebd6b8] shadow-md'
+                          : 'text-gray-700 hover:text-black hover:bg-white/60'
+                      }`}
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      <span>Fotoğraflar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGalleryFilter('video')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        galleryFilter === 'video'
+                          ? 'bg-[#0f0f11] text-[#ebd6b8] shadow-md'
+                          : 'text-gray-700 hover:text-black hover:bg-white/60'
+                      }`}
+                    >
+                      <Film className="h-3.5 w-3.5" />
+                      <span>Videolar</span>
+                    </button>
                   </div>
                 </div>
 
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-[180px]">
-                  {(webContent.galleryItems || []).map((item, idx) => {
-                    const ytThumb = getYoutubeThumbnailUrl(item.videoUrl || item.src);
+                {/* Modern Visual Grid */}
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                  {(webContent.galleryItems || []).map((item, originalIdx) => {
                     const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
-                    const layoutClass = idx === 0
-                      ? 'md:col-span-5 md:row-span-2'
-                      : idx === 1
-                        ? 'md:col-span-3'
-                        : idx === 2
-                          ? 'md:col-span-4'
-                          : idx === 3
-                            ? 'md:col-span-6'
-                            : 'md:col-span-3';
+                    if (galleryFilter === 'image' && isVideo) return null;
+                    if (galleryFilter === 'video' && !isVideo) return null;
 
+                    const ytThumb = getYoutubeThumbnailUrl(item.videoUrl || item.src);
                     const displayImg = ytThumb || item.src;
 
                     return (
-                      <figure
-                        key={`${item.title}-${idx}`}
-                        onClick={() => setSelectedGalleryIndex(idx)}
-                        className={`group relative overflow-hidden rounded-[1.6rem] border border-[#d8d0bd] bg-[#0f0f11] shadow-[0_18px_40px_rgba(15,15,17,0.14)] cursor-pointer select-none ${layoutClass}`}
+                      <div
+                        key={`${item.title}-${originalIdx}`}
+                        onClick={() => setSelectedGalleryIndex(originalIdx)}
+                        className="group relative h-80 rounded-3xl overflow-hidden bg-[#121217] border border-[#d8cdb8] shadow-[0_12px_32px_rgba(15,15,17,0.09)] hover:shadow-[0_24px_50px_rgba(15,15,17,0.22)] transition-all duration-500 cursor-pointer flex flex-col justify-end"
                       >
-                        {isVideo && !ytThumb && item.videoUrl && !item.videoUrl.includes('youtube.com') && !item.videoUrl.includes('youtu.be') ? (
-                          <video
-                            src={item.videoUrl || item.src}
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none"
-                            muted
-                            loop
-                            playsInline
-                            autoPlay
-                          />
-                        ) : (
-                          <img
-                            src={displayImg}
-                            alt={item.title}
-                            referrerPolicy="no-referrer"
-                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none"
-                          />
-                        )}
-
-                        {/* Background Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11]/90 via-[#0f0f11]/25 to-transparent pointer-events-none" />
-
-                        {/* Hover Overlay Button */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] pointer-events-none z-20">
-                          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-[#0f0f11] font-black text-xs rounded-full shadow-lg transform group-hover:scale-105 transition-transform">
-                            {isVideo ? <Play className="h-4 w-4 fill-current" /> : <Maximize2 className="h-4 w-4" />}
-                            <span>{isVideo ? 'Oynat & İncele' : 'Büyüt'}</span>
-                          </div>
-                        </div>
-
-                        {/* Top Category Badge */}
-                        <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#f7f0dd] backdrop-blur-sm pointer-events-none">
-                          {isVideo ? (
-                            <>
-                              <Play className="h-3 w-3 fill-current text-[#dfa069]" />
-                              <span>Video</span>
-                            </>
+                        {/* Background Media */}
+                        <div className="absolute inset-0 overflow-hidden">
+                          {isVideo && !ytThumb && item.videoUrl && !item.videoUrl.includes('youtube.com') && !item.videoUrl.includes('youtu.be') ? (
+                            <video
+                              src={item.videoUrl || item.src}
+                              className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+                              muted
+                              loop
+                              playsInline
+                              autoPlay
+                            />
                           ) : (
-                            'Portföy'
+                            <img
+                              src={displayImg}
+                              alt={item.title}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+                            />
                           )}
                         </div>
 
-                        <figcaption className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-5 text-left pointer-events-none">
-                          <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.2em] text-[#f7f0dd] backdrop-blur-sm">
-                            {idx + 1}
+                        {/* Top floating badges */}
+                        <div className="absolute top-4 inset-x-4 flex items-center justify-between pointer-events-none z-10">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/60 text-white backdrop-blur-md border border-white/20">
+                            {isVideo ? (
+                              <>
+                                <Play className="h-3 w-3 fill-current text-[#dfa069]" />
+                                <span>Video Edit</span>
+                              </>
+                            ) : (
+                              <>
+                                <ImageIcon className="h-3 w-3 text-[#dfa069]" />
+                                <span>Fotoğraf</span>
+                              </>
+                            )}
                           </span>
-                          <p className="mt-3 font-sans text-base sm:text-lg font-black text-white tracking-tight">
+
+                          <span className="w-8 h-8 rounded-full bg-black/50 text-white/90 backdrop-blur-md flex items-center justify-center text-xs font-mono font-bold border border-white/10 group-hover:scale-110 transition-transform">
+                            {originalIdx + 1}
+                          </span>
+                        </div>
+
+                        {/* Center Hover Action Button */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/40 backdrop-blur-[2px] z-10 pointer-events-none">
+                          <div className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                            {isVideo ? <Play className="h-4 w-4 fill-current" /> : <Eye className="h-4 w-4" />}
+                            <span>{isVideo ? 'İzlemek İçin Dokun' : 'Büyük Boyutta İncele'}</span>
+                          </div>
+                        </div>
+
+                        {/* Bottom Gradient & Details */}
+                        <div className="relative z-10 p-5 bg-gradient-to-t from-black via-black/80 to-transparent pt-14 pointer-events-none">
+                          <h3 className="font-sans font-bold text-white text-base leading-snug group-hover:text-[#ebd6b8] transition-colors">
                             {item.title}
-                          </p>
-                        </figcaption>
-                      </figure>
+                          </h3>
+                          <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-300 font-mono">
+                            <span>BK Kuaför Portföy</span>
+                            <span className="text-[#dfa069] font-bold group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                              İncele <ArrowRight className="h-3 w-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Gallery Lightbox Modal */}
+              {/* Gallery Lightbox Modal (Ultra-Modern High End Experience) */}
               <AnimatePresence>
                 {selectedGalleryIndex !== null && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-3 sm:p-6"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-2 sm:p-6"
                     onClick={() => setSelectedGalleryIndex(null)}
                   >
                     <div
-                      className="relative w-full max-w-5xl bg-[#121217] border border-[#2d2d38] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+                      className="relative w-full max-w-5xl bg-[#0e0e12] border border-white/15 rounded-3xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col max-h-[94vh]"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Modal Header */}
-                      <div className="flex items-center justify-between px-5 py-4 border-b border-[#22222b] bg-[#0b0b0e]">
+                      {/* Top Bar */}
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#14141a]">
                         <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-[0.2em] bg-[#dfa069]/20 text-[#dfa069] border border-[#dfa069]/30">
-                            {webContent.galleryItems?.[selectedGalleryIndex]?.mediaType === 'video' || webContent.galleryItems?.[selectedGalleryIndex]?.videoUrl ? 'Video Portföy' : 'Görsel Portföy'}
+                          <span className="px-3 py-1 rounded-full text-[10px] font-mono font-black uppercase tracking-[0.2em] bg-[#dfa069]/20 text-[#dfa069] border border-[#dfa069]/40">
+                            {webContent.galleryItems?.[selectedGalleryIndex]?.mediaType === 'video' || webContent.galleryItems?.[selectedGalleryIndex]?.videoUrl ? 'Video Portföy' : 'Fotoğraf'}
                           </span>
-                          <h3 className="font-sans font-black text-white text-sm sm:text-lg truncate max-w-xs sm:max-w-md">
+                          <h3 className="font-sans font-extrabold text-white text-base sm:text-lg truncate max-w-sm sm:max-w-md">
                             {webContent.galleryItems?.[selectedGalleryIndex]?.title}
                           </h3>
                         </div>
-                        <button
-                          onClick={() => setSelectedGalleryIndex(null)}
-                          className="p-2 text-gray-400 hover:text-white bg-[#1a1a22] hover:bg-[#282835] rounded-xl transition-all cursor-pointer"
-                          title="Kapat (Esc)"
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-gray-400">
+                            {selectedGalleryIndex + 1} / {webContent.galleryItems?.length || 0}
+                          </span>
+                          <button
+                            onClick={() => setSelectedGalleryIndex(null)}
+                            className="p-2.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/15 rounded-2xl transition-all cursor-pointer"
+                            title="Kapat"
+                          >
+                            <X className="h-5 w-5" />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Modal Body / Media Viewport */}
-                      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[300px] max-h-[70vh]">
+                      {/* Main Media Viewport */}
+                      <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden min-h-[340px] max-h-[72vh] p-2 sm:p-4">
                         {/* Prev Button */}
                         {webContent.galleryItems && webContent.galleryItems.length > 1 && (
                           <button
@@ -1606,14 +1666,14 @@ export default function App() {
                               e.stopPropagation();
                               setSelectedGalleryIndex((prev) => (prev === null || prev === 0 ? webContent.galleryItems.length - 1 : prev - 1));
                             }}
-                            className="absolute left-3 z-30 p-2.5 sm:p-3 bg-black/60 hover:bg-black/90 text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer"
+                            className="absolute left-3 sm:left-6 z-30 p-3 sm:p-3.5 bg-black/70 hover:bg-black text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer shadow-2xl"
                             title="Önceki"
                           >
                             <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
                           </button>
                         )}
 
-                        {/* Media Player */}
+                        {/* Media Container */}
                         {(() => {
                           const currentItem = webContent.galleryItems?.[selectedGalleryIndex];
                           if (!currentItem) return null;
@@ -1623,11 +1683,11 @@ export default function App() {
 
                           if (ytEmbedUrl) {
                             return (
-                              <div className="w-full h-full aspect-video max-h-[68vh] flex items-center justify-center">
+                              <div className="w-full h-full aspect-video max-h-[70vh] flex items-center justify-center">
                                 <iframe
                                   src={ytEmbedUrl}
                                   title={currentItem.title}
-                                  className="w-full h-full border-0"
+                                  className="w-full h-full rounded-xl border-0 shadow-2xl"
                                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                   allowFullScreen
                                 />
@@ -1637,7 +1697,7 @@ export default function App() {
                             return (
                               <video
                                 src={currentItem.videoUrl || currentItem.src}
-                                className="max-w-full max-h-[68vh] object-contain"
+                                className="max-w-full max-h-[70vh] rounded-xl object-contain shadow-2xl"
                                 controls
                                 autoPlay
                                 playsInline
@@ -1648,7 +1708,7 @@ export default function App() {
                               <img
                                 src={currentItem.src}
                                 alt={currentItem.title}
-                                className="max-w-full max-h-[68vh] object-contain"
+                                className="max-w-full max-h-[70vh] rounded-xl object-contain shadow-2xl"
                               />
                             );
                           }
@@ -1661,7 +1721,7 @@ export default function App() {
                               e.stopPropagation();
                               setSelectedGalleryIndex((prev) => (prev === null || prev === webContent.galleryItems.length - 1 ? 0 : prev + 1));
                             }}
-                            className="absolute right-3 z-30 p-2.5 sm:p-3 bg-black/60 hover:bg-black/90 text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer"
+                            className="absolute right-3 sm:right-6 z-30 p-3 sm:p-3.5 bg-black/70 hover:bg-black text-white rounded-full border border-white/20 backdrop-blur-md transition-all hover:scale-110 cursor-pointer shadow-2xl"
                             title="Sonraki"
                           >
                             <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -1669,12 +1729,27 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Modal Footer */}
-                      <div className="flex items-center justify-between px-5 py-3 border-t border-[#22222b] bg-[#0b0b0e] text-xs text-gray-400 font-mono">
-                        <span className="truncate">BK Kuaför & Beauty Sanat Galerisi</span>
-                        <span className="shrink-0 font-bold text-[#dfa069]">
-                          {selectedGalleryIndex + 1} / {webContent.galleryItems?.length || 0}
-                        </span>
+                      {/* Footer & Thumbnail Strip */}
+                      <div className="px-6 py-3.5 border-t border-white/10 bg-[#14141a] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2 text-gray-300 font-medium">
+                          <Sparkles className="h-4 w-4 text-[#dfa069]" />
+                          <span>BK Kuaför & Beauty Lounge Tasarım Portföyü</span>
+                        </div>
+
+                        {/* Direct Appointment CTA from Lightbox */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedGalleryIndex(null);
+                              changeSectionWithUrl('booking');
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 shadow-md hover:opacity-95 cursor-pointer"
+                          >
+                            <span>Bu Tasarım İçin Randevu Al</span>
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>

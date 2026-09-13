@@ -1,11 +1,13 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Search, Layers, CheckCircle, ArrowRight, ShieldCheck, Cpu, Droplets, Star, Zap, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Sparkles, Search, Layers, CheckCircle, ArrowRight, ShieldCheck, Cpu, Droplets, Star, Zap, ChevronRight, ChevronLeft, Clock, Sparkle } from 'lucide-react';
 import { KerastaseProduct } from '../types';
 
 interface KerastaseViewProps {
   products: KerastaseProduct[];
   onBookKerastaseService?: (productName?: string) => void;
+  kscanComingSoon?: boolean;
+  kscanBadgeText?: string;
 }
 
 const SERIES_IMAGE_MAP: Record<string, string> = {
@@ -45,6 +47,8 @@ const KERASTASE_VIDEOS = [
 export default function KerastaseView({
   products,
   onBookKerastaseService,
+  kscanComingSoon = true,
+  kscanBadgeText = 'ÇOK YAKINDA SALONUMUZDA',
 }: KerastaseViewProps) {
   const [selectedSeries, setSelectedSeries] = useState<string>('all');
   const [selectedStep, setSelectedStep] = useState<string>('all');
@@ -359,10 +363,27 @@ export default function KerastaseView({
         id="kscan-section"
         className="rounded-3xl bg-gradient-to-br from-[#121216] via-[#1a1a22] to-[#0c0c0e] text-white p-8 sm:p-12 lg:p-16 border border-[#2d2d38] shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-10 justify-between"
       >
+        {/* Diagonal Corner Ribbon if Coming Soon */}
+        {kscanComingSoon && (
+          <div className="absolute top-0 right-0 w-44 h-44 overflow-hidden pointer-events-none z-30">
+            <div className="absolute top-7 -right-12 w-52 py-1.5 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 text-gray-950 text-[10px] font-black font-mono tracking-widest uppercase text-center rotate-45 shadow-lg border-y border-amber-300/40">
+              {kscanBadgeText || "YAKINDA SİZLERLE"}
+            </div>
+          </div>
+        )}
+
         <div className="relative z-10 max-w-xl space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
-            <Cpu className="h-3.5 w-3.5 mr-1" />
-            YAPAY ZEKÂ DESTEKLİ SAÇ DERİSİ VE SAÇ ANALİZİ
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
+              <Cpu className="h-3.5 w-3.5 mr-1" />
+              YAPAY ZEKÂ DESTEKLİ SAÇ DERİSİ VE SAÇ ANALİZİ
+            </div>
+            {kscanComingSoon && (
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-400/20 border border-amber-400/40 rounded-full text-amber-200 text-xs font-mono font-black uppercase tracking-wider animate-pulse">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Hazırlık Aşamasında</span>
+              </span>
+            )}
           </div>
 
           <h2 className="font-sans font-black text-3xl sm:text-4xl text-white tracking-tight leading-tight">
@@ -372,6 +393,17 @@ export default function KerastaseView({
           <p className="text-gray-400 text-sm leading-relaxed">
             K-SCAN, yalnızca yetkili Kérastase salonlarında bulunan yenilikçi bir akıllı kameradır. Gelişmiş yapay zekâ teknolojisiyle saç derinizi ve tellerinizi 100 kat büyüterek analiz eder ve size özel Fusio-Dose bakım reçetenizi saniyeler içinde oluşturur.
           </p>
+
+          {/* Coming soon notice box when active */}
+          {kscanComingSoon && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-amber-200/90 text-xs leading-relaxed">
+              <Sparkle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-amber-300 block font-sans font-bold">Salonumuz İçin Anlaşma Sürecinde:</strong>
+                K-SCAN akıllı analiz cihazımız çok yakında salonumuzda hizmetinize sunulacaktır. Cihaz kurulumu tamamlandığında randevu alımı aktif edilecektir; şu anda diğer tüm Kérastase bakım ritüellerimizden randevu alabilirsiniz.
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 text-xs font-mono">
             <div className="bg-[#22222c] p-3 rounded-xl border border-gray-800">
@@ -384,14 +416,34 @@ export default function KerastaseView({
             </div>
           </div>
 
-          {onBookKerastaseService && (
-            <button
-              onClick={() => onBookKerastaseService('K-SCAN Saç Analizi')}
-              className="px-6 py-3.5 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer"
-            >
-              <span>Ücretsiz K-SCAN Randevusu Al</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
+          {kscanComingSoon ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="px-5 py-3 bg-[#22222b] text-gray-400 border border-gray-700 font-bold text-xs rounded-xl flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-amber-400" />
+                <span>K-SCAN Randevuları Çok Yakında Başlıyor</span>
+              </div>
+              {onBookKerastaseService && (
+                <button
+                  type="button"
+                  onClick={() => onBookKerastaseService('Kérastase Özel Bakım Ritüeli')}
+                  className="px-5 py-3 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer hover:opacity-95"
+                >
+                  <span>Mevcut Bakımlara Randevu Al</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ) : (
+            onBookKerastaseService && (
+              <button
+                type="button"
+                onClick={() => onBookKerastaseService('K-SCAN Saç Analizi')}
+                className="px-6 py-3.5 bg-gradient-to-r from-[#dfa069] to-[#cba358] text-gray-950 font-black text-xs uppercase tracking-wider rounded-xl flex items-center space-x-2 shadow-lg transition-all cursor-pointer"
+              >
+                <span>Ücretsiz K-SCAN Randevusu Al</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )
           )}
         </div>
 

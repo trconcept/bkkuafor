@@ -2679,6 +2679,48 @@ export default function AdminDashboard({
               </button>
             </div>
 
+            {/* K-SCAN AI CİHAZI DURUM YÖNETİMİ */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-amber-300/50 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-black text-sm text-gray-950">K-SCAN Akıllı Teşhis Kamerası Durumu</span>
+                  {webContent.kscanComingSoon !== false ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                      Yakında Sizlerle Rozeti Aktif
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Hizmete Açık & Randevu Aktif
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 max-w-2xl">
+                  {webContent.kscanComingSoon !== false
+                    ? 'Şu an Kérastase sayfasında sağ üstte çapraz "YAKINDA SİZLERLE" rozeti görünür ve müşterilerin henüz gelmeyen cihaza randevu alması engellenir.'
+                    : 'Cihaz anlaşması tamamlanıp salona geldiğinde bu modu kapatabilirsiniz; müşteriler K-SCAN randevusu alabilir.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-800 cursor-pointer select-none bg-white px-3 py-2 rounded-xl border border-gray-200 shadow-sm">
+                  <input
+                    type="checkbox"
+                    checked={webContent.kscanComingSoon !== false}
+                    onChange={(e) => {
+                      const updatedVal = e.target.checked;
+                      onUpdateWebContent({
+                        ...webContent,
+                        kscanComingSoon: updatedVal,
+                        kscanBadgeText: webContent.kscanBadgeText || 'ÇOK YAKINDA SALONUMUZDA',
+                      });
+                    }}
+                    className="h-4 w-4 rounded accent-[#dfa069]"
+                  />
+                  <span>Yakında Sizlerle Rozetini Göster</span>
+                </label>
+              </div>
+            </div>
+
             {/* ADD KERASTASE PRODUCT FORM */}
             <AnimatePresence>
               {newKerastaseOpen && (
@@ -3347,7 +3389,13 @@ export default function AdminDashboard({
         {activeTab === 'stylists' && (
           <div className="bg-white rounded-3xl p-6 border border-gray-150 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-              <h3 className="font-sans font-black text-xl text-gray-950">Salon Personeli & Usta Stilistler</h3>
+              <div>
+                <h3 className="font-sans font-black text-xl text-gray-950">Salon Personeli & Usta Stilistler</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Web sitesindeki "Sanatçılarımız" bölümünü ve randevu sistemindeki personelleri yönetin.
+                </p>
+              </div>
+
               <button
                 onClick={() => setNewStylistOpen(!newStylistOpen)}
                 className="px-4 py-2 bg-[#0f0f11] hover:bg-[#dfa069] text-white hover:text-gray-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all"
@@ -3355,6 +3403,45 @@ export default function AdminDashboard({
                 <Plus className="h-4 w-4" />
                 <span>Yeni Personel Ekle</span>
               </button>
+            </div>
+
+            {/* WEB SAYFASINDA GİZLE / GÖSTER KONTROLÜ */}
+            <div className="p-4 sm:p-5 rounded-2xl border border-gray-200 bg-gray-50/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-black text-sm text-gray-950">Ana Sayfa Sanatçılarımız Bölümü</span>
+                  {webContent.showStylistsSection !== false ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      Web Sayfasında Yayında
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black font-mono uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                      Web Sayfasında Gizli
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 max-w-2xl">
+                  Personeliniz sitede görünmek istemediğinde bu seçeneği kapatarak "Sanatçılarımız Kusursuz Makası Kullanan Usta Eller" bölümünü ana sayfadan tamamen gizleyebilirsiniz.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-800 cursor-pointer select-none bg-white px-3.5 py-2 rounded-xl border border-gray-200 shadow-sm">
+                  <input
+                    type="checkbox"
+                    checked={webContent.showStylistsSection !== false}
+                    onChange={(e) => {
+                      const updatedVal = e.target.checked;
+                      onUpdateWebContent({
+                        ...webContent,
+                        showStylistsSection: updatedVal,
+                      });
+                    }}
+                    className="h-4 w-4 rounded accent-[#dfa069]"
+                  />
+                  <span>Bölümü Sitede Göster</span>
+                </label>
+              </div>
             </div>
 
             <AnimatePresence>

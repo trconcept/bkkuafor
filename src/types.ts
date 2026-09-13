@@ -184,4 +184,9 @@ export interface WebContent {
   googleMapsIframeUrl?: string;
   googleMapsDirectionsUrl?: string;
   salonAddressText?: string;
+
+  // Modüler Bölüm Kontrolleri
+  kscanComingSoon?: boolean; // K-SCAN Akıllı Teşhis Kamerası Yakında Sizlerle mi?
+  kscanBadgeText?: string;
+  showStylistsSection?: boolean; // Sanatçılarımız (Personel) Bölümü Gösterilsin mi?
 }
