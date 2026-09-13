@@ -1285,7 +1285,7 @@ const cleanupTimer = setInterval(() => {
 cleanupTimer.unref();
 
 const start = async () => {
-  // Google Search Console doğrulama dosyasını doğrudan ve aracısız sunma
+  // Google Search Console doğrulama dosyasını doğrudan ve güvenli sunma (Yalnızca gerçek dosya varsa sunulur, yoksa 404 döner)
   app.get(/^\/google([a-zA-Z0-9]+)\.html$/, (req, res) => {
     const filename = req.path.replace(/^\//, '');
     const publicPath = path.join(process.cwd(), 'public', filename);
@@ -1296,7 +1296,7 @@ const start = async () => {
     if (fs.existsSync(distPath)) {
       return res.type('text/html').sendFile(distPath);
     }
-    return res.type('text/html').send(`google-site-verification: ${filename}\n`);
+    return res.status(404).send('Not Found');
   });
 
   // Vite middleware setup
