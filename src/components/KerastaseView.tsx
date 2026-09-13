@@ -12,6 +12,7 @@ interface KerastaseViewProps {
 
 const SERIES_IMAGE_MAP: Record<string, string> = {
   'Genesis': '/KERASTASE/26.png',
+  'Genesis Homme': '/KERASTASE/26.png',
   'Chronologiste': '/KERASTASE/27.png',
   'Elixir Ultime': '/KERASTASE/29.png',
   'Gloss Absolu': '/KERASTASE/36.png',
@@ -107,9 +108,12 @@ export default function KerastaseView({
 
   // Helper default image
   const getProductImage = (prod: KerastaseProduct) => {
+    if (prod.image && prod.image.includes('photo-1585238342024-78d387f4a707')) {
+      return '/KERASTASE/26.png';
+    }
     if (SERIES_IMAGE_MAP[prod.series]) return SERIES_IMAGE_MAP[prod.series];
-    if (prod.image && prod.image.trim()) return prod.image;
-    return 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=600&auto=format&fit=crop';
+    if (prod.image && prod.image.trim() && !prod.image.includes('...')) return prod.image;
+    return '/bk-logo.jpg';
   };
 
   return (
@@ -412,7 +416,7 @@ export default function KerastaseView({
                         const target = e.currentTarget;
                         if (!target.dataset.fallback) {
                           target.dataset.fallback = 'true';
-                          target.src = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=600&auto=format&fit=crop';
+                          target.src = '/bk-logo.jpg';
                         }
                       }}
                     />

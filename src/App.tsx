@@ -418,28 +418,47 @@ export default function App() {
     }
   });
 
+const sanitizeKerastaseProducts = (products: KerastaseProduct[]): KerastaseProduct[] => {
+  return products.map((product) => {
+    if (product.image && product.image.includes('photo-1585238342024-78d387f4a707')) {
+      return { ...product, image: '/KERASTASE/26.png' };
+    }
+    return product;
+  });
+};
+
+const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
+  return posts.map((post) => {
+    if (!post.image || post.image.trim() === '' || post.image.includes('images.unsplash.com/...')) {
+      const initial = INITIAL_BLOG_POSTS.find((b) => b.id === post.id);
+      return { ...post, image: initial?.image || '/bk-logo.jpg' };
+    }
+    return post;
+  });
+};
+
   const [kerastaseProducts, setKerastaseProducts] = useState<KerastaseProduct[]>(() => {
     try {
       const saved = localStorage.getItem('salon_kerastase_products');
-      if (!saved) return KERASTASE_PRODUCTS;
+      if (!saved) return sanitizeKerastaseProducts(KERASTASE_PRODUCTS);
 
       const savedProducts = JSON.parse(saved) as KerastaseProduct[];
       const savedIds = new Set(savedProducts.map((product) => product.id));
-      return [
+      return sanitizeKerastaseProducts([
         ...savedProducts,
         ...KERASTASE_PRODUCTS.filter((product) => !savedIds.has(product.id))
-      ];
+      ]);
     } catch {
-      return KERASTASE_PRODUCTS;
+      return sanitizeKerastaseProducts(KERASTASE_PRODUCTS);
     }
   });
 
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => {
     try {
       const saved = localStorage.getItem('salon_blog_posts');
-      return saved ? JSON.parse(saved) : INITIAL_BLOG_POSTS;
+      return sanitizeBlogPosts(saved ? JSON.parse(saved) : INITIAL_BLOG_POSTS);
     } catch {
-      return INITIAL_BLOG_POSTS;
+      return sanitizeBlogPosts(INITIAL_BLOG_POSTS);
     }
   });
 
@@ -494,13 +513,13 @@ export default function App() {
 
       const savedKerastaseProducts = localStorage.getItem('salon_kerastase_products');
       if (savedKerastaseProducts) {
-        const parsed = JSON.parse(savedKerastaseProducts);
+        const parsed = sanitizeKerastaseProducts(JSON.parse(savedKerastaseProducts));
         setKerastaseProducts((prev) => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
       }
 
       const savedBlogPosts = localStorage.getItem('salon_blog_posts');
       if (savedBlogPosts) {
-        const parsed = JSON.parse(savedBlogPosts);
+        const parsed = sanitizeBlogPosts(JSON.parse(savedBlogPosts));
         setBlogPosts((prev) => JSON.stringify(prev) === JSON.stringify(parsed) ? prev : parsed);
       }
 
@@ -1138,7 +1157,18 @@ export default function App() {
                     {visibleStylists.map((sty) => (
                       <div key={sty.id} className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150 space-y-3 flex flex-col items-center">
                         <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-[#ebd6b8]">
-                          <img src={sty.avatar} alt={sty.name} className="w-full h-full object-cover" />
+                          <img
+                            src={sty.avatar}
+                            alt={sty.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (!target.src.endsWith('/bk-logo.jpg')) {
+                                target.onerror = null;
+                                target.src = '/bk-logo.jpg';
+                              }
+                            }}
+                          />
                         </div>
                         <div className="text-center">
                           <h4 className="font-sans font-extrabold text-sm text-[#0f0f11] truncate">{sty.name}</h4>
@@ -1568,6 +1598,13 @@ export default function App() {
                               alt={item.title}
                               referrerPolicy="no-referrer"
                               className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (!target.src.endsWith('/bk-logo.jpg')) {
+                                  target.onerror = null;
+                                  target.src = '/bk-logo.jpg';
+                                }
+                              }}
                             />
                           )}
                         </div>
@@ -1710,6 +1747,13 @@ export default function App() {
                                 src={currentItem.src}
                                 alt={currentItem.title}
                                 className="max-w-full max-h-[70vh] rounded-xl object-contain shadow-2xl"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (!target.src.endsWith('/bk-logo.jpg')) {
+                                    target.onerror = null;
+                                    target.src = '/bk-logo.jpg';
+                                  }
+                                }}
                               />
                             );
                           }

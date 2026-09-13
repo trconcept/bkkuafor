@@ -490,7 +490,19 @@ export default function BookingWizard({
                               }`}
                             >
                               <div className="h-14 w-14 rounded-full overflow-hidden border border-gray-200 flex-shrink-0">
-                                <img src={sty.avatar} alt={sty.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                <img
+                                  src={sty.avatar}
+                                  alt={sty.name}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    if (!target.src.endsWith('/bk-logo.jpg')) {
+                                      target.onerror = null;
+                                      target.src = '/bk-logo.jpg';
+                                    }
+                                  }}
+                                />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h4 className="font-sans font-black text-sm text-gray-900 truncate">{sty.name}</h4>
@@ -755,7 +767,18 @@ export default function BookingWizard({
                 {selectedStylist ? (
                   <div className="flex items-center space-x-3 bg-[#1e1e24] p-2.5 rounded-xl border border-[#2d2d35]">
                     <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 border border-[#cba358]/20">
-                      <img src={selectedStylist.avatar} alt={selectedStylist.name} className="w-full h-full object-cover" />
+                      <img
+                        src={selectedStylist.avatar}
+                        alt={selectedStylist.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.endsWith('/bk-logo.jpg')) {
+                            target.onerror = null;
+                            target.src = '/bk-logo.jpg';
+                          }
+                        }}
+                      />
                     </div>
                     <div className="min-w-0">
                       <h5 className="text-xs font-bold text-white truncate">{selectedStylist.name}</h5>

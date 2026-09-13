@@ -840,7 +840,7 @@ export const KERASTASE_PRODUCTS: KerastaseProduct[] = [
     stepLabel: '1. Saç Banyosu',
     description: 'Erkekler için zayıflamış, incelmeye meyilli saç tellerini anında kalınlaştıran ve hacim kazandıran saç banyosu.',
     size: '250 ml',
-    image: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?q=80&w=600&auto=format&fit=crop',
+    image: '/KERASTASE/26.png',
     benefits: ['Kreatin & Zencefil Kökü', 'Anında Saç Teli Kalınlığı']
   },
   {

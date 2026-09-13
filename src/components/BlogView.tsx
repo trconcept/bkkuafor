@@ -8,6 +8,15 @@ interface BlogViewProps {
   onBookService?: (categoryOrTitle?: string) => void;
 }
 
+const getBlogImageUrl = (url?: string) => {
+  if (!url || typeof url !== 'string') return '/bk-logo.jpg';
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === 'https://images.unsplash.com/...' || trimmed === 'https://images.unsplash.com/' || trimmed.startsWith('https://images.unsplash.com/...')) {
+    return '/bk-logo.jpg';
+  }
+  return trimmed;
+};
+
 export default function BlogView({
   posts,
   onBookService
@@ -112,10 +121,17 @@ export default function BlogView({
                 {/* Image Cover */}
                 <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-100">
                   <img
-                    src={post.image}
+                    src={getBlogImageUrl(post.image)}
                     alt={post.title}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.endsWith('/bk-logo.jpg')) {
+                        target.onerror = null;
+                        target.src = '/bk-logo.jpg';
+                      }
+                    }}
                   />
                   <div className="absolute top-4 left-4">
                     <span className="px-3 py-1 bg-[#0f0f11]/90 backdrop-blur-md rounded-full text-[10px] font-mono font-black text-[#dfa069] uppercase border border-[#dfa069]/20">
@@ -202,7 +218,18 @@ export default function BlogView({
                 
                 {/* Hero Image */}
                 <div className="aspect-[16/8] rounded-2xl overflow-hidden shadow-inner bg-gray-100">
-                  <img src={activePost.image} alt={activePost.title} className="w-full h-full object-cover" />
+                  <img
+                    src={getBlogImageUrl(activePost.image)}
+                    alt={activePost.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.endsWith('/bk-logo.jpg')) {
+                        target.onerror = null;
+                        target.src = '/bk-logo.jpg';
+                      }
+                    }}
+                  />
                 </div>
 
                 {/* Article Header */}

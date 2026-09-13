@@ -4,7 +4,7 @@ import {
   BarChart3, Calendar, Scissors, Users, Plus, Check, X, CheckSquare, 
   Trash2, ShieldCheck, CreditCard, Search, Mail, MessageSquare, Star, 
   ToggleLeft, AlertTriangle, ChevronDown, Clock, UserCheck, Pencil,
-  Image, Sparkles, MapPin, Upload, RefreshCw, Eye, BookOpen, Share2,
+  Image, Sparkles, MapPin, Upload, RefreshCw, Eye, EyeOff, BookOpen, Share2,
   Instagram, Facebook, Video, Twitter, Phone, HelpCircle, LayoutDashboard,
   LogOut, Menu, BellRing, Lock
 } from 'lucide-react';
@@ -272,6 +272,7 @@ export default function AdminDashboard({
   const [blogExcerpt, setBlogExcerpt] = useState('');
   const [blogContent, setBlogContent] = useState('');
   const [blogImage, setBlogImage] = useState('');
+  const [blogImageUploading, setBlogImageUploading] = useState(false);
 
   // Edit Blog states
   const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
@@ -283,6 +284,7 @@ export default function AdminDashboard({
   const [editBlogExcerpt, setEditBlogExcerpt] = useState('');
   const [editBlogContent, setEditBlogContent] = useState('');
   const [editBlogImage, setEditBlogImage] = useState('');
+  const [editBlogImageUploading, setEditBlogImageUploading] = useState(false);
 
   // -------------------------------------------------------------
   // SOSYAL MEDYA STATES
@@ -617,7 +619,7 @@ export default function AdminDashboard({
       tags: tagsArray,
       excerpt: blogExcerpt.trim() || blogContent.substring(0, 150) + '...',
       content: blogContent,
-      image: blogImage.trim() || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop'
+      image: blogImage.trim() && !blogImage.includes('...') ? blogImage.trim() : '/bk-logo.jpg'
     };
 
     onUpdateBlogPosts([newPost, ...blogPosts]);
@@ -659,7 +661,7 @@ export default function AdminDashboard({
           tags: tagsArray,
           excerpt: editBlogExcerpt,
           content: editBlogContent,
-          image: editBlogImage || p.image
+          image: editBlogImage.trim() && !editBlogImage.includes('...') ? editBlogImage.trim() : (p.image && !p.image.includes('...') ? p.image : '/bk-logo.jpg')
         };
       }
       return p;
@@ -777,6 +779,60 @@ export default function AdminDashboard({
     alert(`"${editStyName}" personeli güncellendi.`);
   };
 
+  const handleBlogImageFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen geçerli bir görsel dosyası seçin (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Görsel boyutu en fazla 15MB olabilir.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') return;
+      setBlogImageUploading(true);
+      try {
+        const res = await uploadAdminMedia(reader.result);
+        setBlogImage(res.url);
+      } catch {
+        setBlogImage(reader.result as string);
+      } finally {
+        setBlogImageUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEditBlogImageFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen geçerli bir görsel dosyası seçin (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Görsel boyutu en fazla 15MB olabilir.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') return;
+      setEditBlogImageUploading(true);
+      try {
+        const res = await uploadAdminMedia(reader.result);
+        setEditBlogImage(res.url);
+      } catch {
+        setEditBlogImage(reader.result as string);
+      } finally {
+        setEditBlogImageUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDeleteStylist = (id: string) => {
     if (window.confirm('Bu personeli silmek istediğinizden emin misiniz?')) {
       onUpdateStylists(stylists.filter((stylist) => stylist.id !== id));
@@ -786,10 +842,17 @@ export default function AdminDashboard({
   const handleToggleStylistVisibility = (id: string) => {
     onUpdateStylists(stylists.map((stylist) => {
       if (stylist.id === id) {
-        return { ...stylist, isVisible: stylist.isVisible !== false };
+        return { ...stylist, isVisible: stylist.isVisible === false ? true : false };
       }
       return stylist;
     }));
+  };
+
+  const handleSetAllStylistsVisibility = (visible: boolean) => {
+    onUpdateStylists(stylists.map((stylist) => ({
+      ...stylist,
+      isVisible: visible
+    })));
   };
 
   const handleSaveMessageReply = (messageId: string) => {
@@ -946,7 +1009,8 @@ export default function AdminDashboard({
         setGalleryItemSrc(result.url);
         if (file.type.startsWith('video/')) setGalleryItemVideoUrl(result.url);
       } catch (error) {
-        alert(error instanceof Error ? error.message : 'Galeri dosyası sunucuya yüklenemedi.');
+        setGalleryItemSrc(reader.result as string);
+        if (file.type.startsWith('video/')) setGalleryItemVideoUrl(reader.result as string);
       } finally {
         setGalleryMediaUploading(false);
       }
@@ -959,6 +1023,39 @@ export default function AdminDashboard({
       alert('Görsel veya video 15MB üzerinde olmamalıdır.');
       return;
     }
+    reader.readAsDataURL(file);
+  };
+
+  const handleGalleryVideoUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      alert('Lütfen geçerli bir video dosyası seçin (MP4, WEBM, MOV).');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      alert('Video boyutu en fazla 15MB olabilir.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      if (typeof reader.result !== 'string') return;
+      setGalleryMediaUploading(true);
+      try {
+        const result = await uploadAdminMedia(reader.result);
+        setGalleryItemVideoUrl(result.url);
+        if (!galleryItemSrc) {
+          setGalleryItemSrc('/bk-logo.jpg');
+        }
+      } catch {
+        setGalleryItemVideoUrl(reader.result as string);
+        if (!galleryItemSrc) {
+          setGalleryItemSrc('/bk-logo.jpg');
+        }
+      } finally {
+        setGalleryMediaUploading(false);
+      }
+    };
     reader.readAsDataURL(file);
   };
 
@@ -2946,6 +3043,14 @@ export default function AdminDashboard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {kerastaseProducts.map((prod) => (
                 <div key={prod.id} className="p-4 rounded-2xl border border-gray-150 bg-white flex justify-between items-start gap-3">
+                  <div className="h-14 w-14 rounded-xl overflow-hidden bg-gray-50 shrink-0 border border-gray-200 p-1 flex items-center justify-center">
+                    <img
+                      src={prod.image && !prod.image.includes('images.unsplash.com/photo-1513104890138-7c749659a591') ? prod.image : '/bk-logo.jpg'}
+                      alt={prod.name}
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                    />
+                  </div>
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-[#0f0f11] text-[#ebd6b8] text-[9px] font-mono font-bold rounded">
@@ -3079,14 +3184,45 @@ export default function AdminDashboard({
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label className="text-[10px] text-gray-500 font-mono block">Görsel URL</label>
-                      <input
-                        type="url"
-                        placeholder="https://images.unsplash.com/..."
-                        value={blogImage}
-                        onChange={(e) => setBlogImage(e.target.value)}
-                        className="w-full border border-gray-200 bg-white rounded-xl p-2.5"
-                      />
+                      <label className="text-[10px] text-gray-500 font-mono block">Görsel (URL veya Bilgisayardan Yükle)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="https://images.unsplash.com/... veya bilgisayardan seçin"
+                          value={blogImage}
+                          onChange={(e) => setBlogImage(e.target.value)}
+                          className="w-full border border-gray-200 bg-white rounded-xl p-2.5 text-xs"
+                        />
+                        <label className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs transition-colors">
+                          <Upload className="h-4 w-4 text-[#dfa069]" />
+                          <span>{blogImageUploading ? 'Yükleniyor...' : 'Görsel Seç'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={blogImageUploading}
+                            onChange={handleBlogImageFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {blogImage && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img
+                            src={blogImage}
+                            alt="Önizleme"
+                            className="h-10 w-16 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                          />
+                          <span className="text-[11px] text-emerald-600 font-bold">Görsel seçildi</span>
+                          <button
+                            type="button"
+                            onClick={() => setBlogImage('')}
+                            className="text-xs text-red-500 hover:underline ml-2"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="sm:col-span-3">
@@ -3181,13 +3317,45 @@ export default function AdminDashboard({
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] text-gray-500 font-mono block">Görsel URL</label>
-                      <input
-                        type="url"
-                        value={editBlogImage}
-                        onChange={(e) => setEditBlogImage(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl p-2.5"
-                      />
+                      <label className="text-[10px] text-gray-500 font-mono block">Görsel (URL veya Bilgisayardan Yükle)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={editBlogImage}
+                          onChange={(e) => setEditBlogImage(e.target.value)}
+                          placeholder="https://images.unsplash.com/... veya bilgisayardan seçin"
+                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
+                        />
+                        <label className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs transition-colors">
+                          <Upload className="h-4 w-4 text-[#dfa069]" />
+                          <span>{editBlogImageUploading ? 'Yükleniyor...' : 'Görsel Seç'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={editBlogImageUploading}
+                            onChange={handleEditBlogImageFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {editBlogImage && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img
+                            src={editBlogImage}
+                            alt="Önizleme"
+                            className="h-10 w-16 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                          />
+                          <span className="text-[11px] text-emerald-600 font-bold">Görsel seçildi</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditBlogImage('')}
+                            className="text-xs text-red-500 hover:underline ml-2"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="sm:col-span-2">
@@ -3234,6 +3402,14 @@ export default function AdminDashboard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {blogPosts.map((post) => (
                 <div key={post.id} className="p-4 rounded-2xl border border-gray-150 bg-white flex justify-between items-start gap-3">
+                  <div className="h-14 w-14 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+                    <img
+                      src={post.image && !post.image.includes('...') ? post.image : '/bk-logo.jpg'}
+                      alt={post.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                    />
+                  </div>
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-amber-50 text-[#a06b3e] text-[9px] font-mono font-bold rounded">
@@ -3575,11 +3751,46 @@ export default function AdminDashboard({
               </div>
             )}
 
+            {/* Top Bar for Stylists with Bulk Show/Hide Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-150">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#a06b3e]" />
+                <span className="text-xs font-bold text-gray-800">
+                  {stylists.filter((s) => s.isVisible !== false).length} / {stylists.length} personel web sitesinde yayında
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSetAllStylistsVisibility(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                  title="Tüm personelleri sitede görünür yapar"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Hepsini Göster</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetAllStylistsVisibility(false)}
+                  className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                  title="Tüm personelleri sitede gizler"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  <span>Hepsini Gizle</span>
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {stylists.map((sty) => (
                 <div key={sty.id} className="p-4 rounded-2xl border border-gray-150 bg-white flex items-center space-x-4">
                   <div className="h-16 w-16 rounded-full overflow-hidden border border-gray-200 shrink-0">
-                    <img src={sty.avatar} alt={sty.name} className="w-full h-full object-cover" />
+                    <img
+                      src={sty.avatar}
+                      alt={sty.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="font-sans font-black text-sm text-gray-900">{sty.name}</h4>
@@ -3744,22 +3955,130 @@ export default function AdminDashboard({
                   </select>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="text-[10px] text-gray-500 font-mono block">Görsel veya Video URL</label>
-                  <div className="flex gap-2 items-center">
-                  <input type="text" value={galleryItemSrc} onChange={(e) => setGalleryItemSrc(e.target.value)} className="w-full border border-gray-200 rounded-xl p-2.5" placeholder={galleryItemMediaType === 'image' ? 'Görsel URL adresi' : 'Video küçük görseli (opsiyonel)'} />
-                    <label className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0">
-                      <Upload className="h-4 w-4" />
-                      <input type="file" accept={galleryItemMediaType === 'image' ? 'image/*' : 'video/*'} onChange={handleGalleryItemFileUpload} className="hidden" />
-                    </label>
-                  </div>
-                </div>
+                {galleryItemMediaType === 'video' ? (
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] text-gray-500 font-mono block">Video Dosyası veya Video URL (MP4, YouTube, Vimeo)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={galleryItemVideoUrl}
+                          onChange={(e) => setGalleryItemVideoUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=... veya bilgisayardan video yükleyin"
+                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
+                        />
+                        <label className="px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs shadow-sm">
+                          <Upload className="h-4 w-4 text-[#dfa069]" />
+                          <span>{galleryMediaUploading ? 'Yükleniyor...' : 'Video Seç'}</span>
+                          <input
+                            type="file"
+                            accept="video/*"
+                            disabled={galleryMediaUploading}
+                            onChange={handleGalleryVideoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {galleryItemVideoUrl && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            ✓ Video hazır
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setGalleryItemVideoUrl('')}
+                            className="text-[11px] text-red-500 hover:underline"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {galleryMediaUploading ? 'Video yükleniyor, lütfen bekleyin...' : 'Bilgisayarınızdan video yükleyebilir veya YouTube bağlantısı yapıştırabilirsiniz (En fazla 15MB).'}
+                      </p>
+                    </div>
 
-                {galleryItemMediaType === 'video' && (
+                    <div className="sm:col-span-2">
+                      <label className="text-[10px] text-gray-500 font-mono block">Video Kapak Görseli (Küçük Resim - Thumbnail)</label>
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={galleryItemSrc}
+                          onChange={(e) => setGalleryItemSrc(e.target.value)}
+                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
+                          placeholder="Kapak görseli URL adresi veya bilgisayardan görsel seçin (opsiyonel)"
+                        />
+                        <label className="px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs shadow-sm">
+                          <Upload className="h-4 w-4 text-[#dfa069]" />
+                          <span>{galleryMediaUploading ? 'Yükleniyor...' : 'Kapak Seç'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={galleryMediaUploading}
+                            onChange={handleGalleryItemFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      {galleryItemSrc && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img
+                            src={galleryItemSrc}
+                            alt="Kapak önizleme"
+                            className="h-10 w-16 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setGalleryItemSrc('')}
+                            className="text-[11px] text-red-500 hover:underline"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] text-gray-500 font-mono block">Video URL (YouTube veya doğrudan video bağlantısı)</label>
-                    <input type="text" value={galleryItemVideoUrl} onChange={(e) => setGalleryItemVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=... veya yüklenmiş video" className="w-full border border-gray-200 rounded-xl p-2.5" />
-                    <p className="text-[10px] text-gray-400 mt-1">{galleryMediaUploading ? 'Video yükleniyor...' : 'Bilgisayardan video seçebilir veya YouTube bağlantısı yapıştırabilirsiniz.'}</p>
+                    <label className="text-[10px] text-gray-500 font-mono block">Galeri Görseli (URL veya Bilgisayardan Yükle)</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={galleryItemSrc}
+                        onChange={(e) => setGalleryItemSrc(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
+                        placeholder="Görsel URL adresi veya bilgisayardan görsel seçin"
+                      />
+                      <label className="px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs shadow-sm">
+                        <Upload className="h-4 w-4 text-[#dfa069]" />
+                        <span>{galleryMediaUploading ? 'Yükleniyor...' : 'Görsel Seç'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={galleryMediaUploading}
+                          onChange={handleGalleryItemFileUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {galleryItemSrc && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <img
+                          src={galleryItemSrc}
+                          alt="Görsel önizleme"
+                          className="h-10 w-16 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setGalleryItemSrc('')}
+                          className="text-[11px] text-red-500 hover:underline"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3778,7 +4097,12 @@ export default function AdminDashboard({
                   {item.mediaType === 'video' ? (
                     <video src={item.videoUrl || item.src} muted className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
                   ) : (
-                    <img src={item.src} alt={item.title} className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
+                    <img
+                      src={item.src}
+                      alt={item.title}
+                      className="h-14 w-14 object-cover rounded-lg border border-gray-200"
+                      onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                    />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-sans font-black text-xs text-gray-900 truncate">{item.title}</p>
