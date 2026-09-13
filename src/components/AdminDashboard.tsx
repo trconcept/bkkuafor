@@ -358,6 +358,108 @@ export default function AdminDashboard({
   const [faqAnswerInput, setFaqAnswerInput] = useState('');
   const [faqEditIndex, setFaqEditIndex] = useState<number | null>(null);
 
+  // Statistics & Pricing states
+  const [statsPeriod, setStatsPeriod] = useState<'all' | 'month' | 'year'>('all');
+  const [editingPriceAppId, setEditingPriceAppId] = useState<string | null>(null);
+  const [manualPriceInput, setManualPriceInput] = useState<string>('');
+  const [manualPriceNote, setManualPriceNote] = useState<string>('');
+
+  // Media helpers
+  const getYoutubeEmbedUrl = (value?: string, autoplay = false) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      let id = '';
+      if (url.hostname === 'youtu.be') id = url.pathname.slice(1);
+      else if (url.hostname.endsWith('youtube.com')) {
+        id = url.searchParams.get('v') || url.pathname.match(/\/shorts\/([^/]+)/u)?.[1] || url.pathname.match(/\/embed\/([^/]+)/u)?.[1] || '';
+      }
+      return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay ? '1' : '0'}&rel=0&modestbranding=1` : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const getYoutubeThumbnailUrl = (value?: string) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      let id = '';
+      if (url.hostname === 'youtu.be') id = url.pathname.slice(1);
+      else if (url.hostname.endsWith('youtube.com')) {
+        id = url.searchParams.get('v') || url.pathname.match(/\/shorts\/([^/]+)/u)?.[1] || url.pathname.match(/\/embed\/([^/]+)/u)?.[1] || '';
+      }
+      return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const getGoogleDriveFileId = (value?: string) => {
+    if (!value) return '';
+    try {
+      const match = value.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                    value.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) return match[1];
+    } catch {
+      return '';
+    }
+    return '';
+  };
+
+  const getGoogleDriveEmbedUrl = (value?: string) => {
+    const fileId = getGoogleDriveFileId(value);
+    if (!fileId) return '';
+    return `https://drive.google.com/file/d/${fileId}/preview`;
+  };
+
+  const getGoogleDriveThumbnailUrl = (value?: string) => {
+    const fileId = getGoogleDriveFileId(value);
+    if (!fileId) return '';
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+  };
+
+  const parseAppointmentDate = (dateStr?: string, createdAt?: string): Date => {
+    if (dateStr) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const d = new Date(`${dateStr}T00:00:00`);
+        if (!isNaN(d.getTime())) return d;
+      }
+      const directDate = new Date(dateStr);
+      if (!isNaN(directDate.getTime())) {
+        if (directDate.getFullYear() <= 2001) {
+          const fallbackYear = createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear();
+          directDate.setFullYear(fallbackYear || new Date().getFullYear());
+        }
+        return directDate;
+      }
+      const dmy = dateStr.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+      if (dmy) {
+        const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+        if (!isNaN(d.getTime())) return d;
+      }
+      const monthsMap: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+        ocak: 0, subat: 1, şubat: 1, mart: 2, nisan: 3, mayis: 4, mayıs: 4, haziran: 5, temmuz: 6, agustos: 7, ağustos: 7, eylul: 8, eylül: 8, ekim: 9, kasim: 10, kasım: 10, aralik: 11, aralık: 11
+      };
+      const lower = dateStr.toLowerCase();
+      for (const [mName, mIndex] of Object.entries(monthsMap)) {
+        if (lower.includes(mName)) {
+          const dayMatch = lower.match(/\b(\d{1,2})\b/);
+          const day = dayMatch ? parseInt(dayMatch[1], 10) : 1;
+          const yearMatch = lower.match(/\b(20\d\d)\b/);
+          const year = yearMatch ? parseInt(yearMatch[1], 10) : (createdAt ? new Date(createdAt).getFullYear() : new Date().getFullYear());
+          return new Date(year, mIndex, day);
+        }
+      }
+    }
+    if (createdAt) {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  };
+
   // File Upload Helper
   const handleLogoFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     void readImageFile(e, setEditedSalonLogoUrl);
@@ -1078,11 +1180,19 @@ export default function AdminDashboard({
       return;
     }
 
+    let targetSrc = galleryItemSrc.trim();
+    const driveThumb = getGoogleDriveThumbnailUrl(galleryItemVideoUrl.trim());
+    const ytThumb = getYoutubeThumbnailUrl(galleryItemVideoUrl.trim());
+    if (galleryItemMediaType === 'video' && !targetSrc) {
+      if (driveThumb) targetSrc = driveThumb;
+      else if (ytThumb) targetSrc = ytThumb;
+    }
+
     const normalizedItem = {
       title: galleryItemTitle.trim(),
-      src: galleryItemSrc.trim() || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop',
+      src: targetSrc || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop',
       mediaType: galleryItemMediaType,
-      videoUrl: galleryItemMediaType === 'video' ? (galleryItemVideoUrl.trim() || galleryItemSrc.trim() || undefined) : undefined,
+      videoUrl: galleryItemMediaType === 'video' ? (galleryItemVideoUrl.trim() || targetSrc || undefined) : undefined,
     };
 
     const currentItems = [...(webContent.galleryItems || [])];
@@ -1126,6 +1236,7 @@ export default function AdminDashboard({
     .filter((a) => a.status === 'approved' || a.status === 'completed')
     .reduce((curr, a) => curr + (a.totalPrice || 0), 0);
 
+  const totalCompletedJobs = appointments.filter((a) => a.status === 'completed').length;
   const pendingAppointments = appointments.filter((a) => a.status === 'pending');
 
   const now = new Date();
@@ -1133,15 +1244,13 @@ export default function AdminDashboard({
   const currentYear = now.getFullYear();
 
   const monthlyAppointments = appointments.filter((appointment) => {
-    if (!appointment.date) return false;
-    const appointmentDate = new Date(`${appointment.date}T00:00:00`);
-    return appointmentDate.getMonth() === currentMonth && appointmentDate.getFullYear() === currentYear;
+    const d = parseAppointmentDate(appointment.date, appointment.createdAt);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
   const yearlyAppointments = appointments.filter((appointment) => {
-    if (!appointment.date) return false;
-    const appointmentDate = new Date(`${appointment.date}T00:00:00`);
-    return appointmentDate.getFullYear() === currentYear;
+    const d = parseAppointmentDate(appointment.date, appointment.createdAt);
+    return d.getFullYear() === currentYear;
   });
 
   const monthlyCompletedJobs = monthlyAppointments.filter((appointment) => appointment.status === 'completed').length;
@@ -1153,7 +1262,26 @@ export default function AdminDashboard({
     .filter((appointment) => appointment.status === 'approved' || appointment.status === 'completed')
     .reduce((sum, appointment) => sum + (appointment.totalPrice || 0), 0);
 
-  const statsRows = [...appointments].sort((a, b) => {
+  // Active period display data
+  const displayedAppointments = statsPeriod === 'month' 
+    ? monthlyAppointments 
+    : statsPeriod === 'year' 
+    ? yearlyAppointments 
+    : appointments;
+
+  const displayedCompletedJobs = statsPeriod === 'month' 
+    ? monthlyCompletedJobs 
+    : statsPeriod === 'year' 
+    ? yearlyCompletedJobs 
+    : totalCompletedJobs;
+
+  const displayedEarnings = statsPeriod === 'month' 
+    ? monthlyEarnings 
+    : statsPeriod === 'year' 
+    ? yearlyEarnings 
+    : totalEarnings;
+
+  const statsRows = [...displayedAppointments].sort((a, b) => {
     const aKey = `${a.date || '0000-00-00'}T${a.timeSlot || '00:00'}`;
     const bKey = `${b.date || '0000-00-00'}T${b.timeSlot || '00:00'}`;
     return bKey.localeCompare(aKey);
@@ -1319,8 +1447,22 @@ export default function AdminDashboard({
       }
     }
 
+    let finalPrice = target.totalPrice;
+    if (newStatus === 'completed' && (!target.totalPrice || target.totalPrice === 0)) {
+      const input = window.prompt(
+        `"${target.customerName}" randevusu TAMAMLANDI olarak işaretleniyor.\n\nBu işlem için fiyat girilmemiş veya 0 TL görünüyor. Müşteriden alınan toplam tutarı (TL) girin:`,
+        '0'
+      );
+      if (input !== null) {
+        const parsed = parseFloat(input.replace(/[^\d.,]/g, '').replace(',', '.'));
+        if (!isNaN(parsed) && parsed >= 0) {
+          finalPrice = parsed;
+        }
+      }
+    }
+
     const updated = appointments.map((a) => 
-      a.id === id ? { ...a, status: newStatus } : a
+      a.id === id ? { ...a, status: newStatus, totalPrice: finalPrice } : a
     );
     onUpdateAppointments(updated);
   };
@@ -2284,103 +2426,266 @@ export default function AdminDashboard({
             <div className="flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
               <div>
                 <h3 className="font-sans font-black text-xl text-gray-950">İstatistikler & İşlem Özeti</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Aylık ve yıllık randevu, iş yükü ve kazanç görünümü.</p>
+                <p className="text-xs text-gray-500 mt-0.5">Randevu, tamamlanan işler ve kazançlarınızı anlık olarak inceleyin ve fiyatlandırın.</p>
+              </div>
+
+              {/* Period Filter Buttons */}
+              <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setStatsPeriod('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    statsPeriod === 'all'
+                      ? 'bg-[#0f0f11] text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-950'
+                  }`}
+                >
+                  Tüm Zamanlar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatsPeriod('month')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    statsPeriod === 'month'
+                      ? 'bg-[#0f0f11] text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-950'
+                  }`}
+                >
+                  Bu Ay ({new Intl.DateTimeFormat('tr-TR', { month: 'long' }).format(new Date())})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatsPeriod('year')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    statsPeriod === 'year'
+                      ? 'bg-[#0f0f11] text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-950'
+                  }`}
+                >
+                  Bu Yıl ({currentYear})
+                </button>
               </div>
             </div>
 
+            {/* Main Stats Cards for selected period */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-              <div className="rounded-2xl border border-gray-150 bg-[#f8fafc] p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">Aylık randevu</div>
-                <div className="mt-3 text-3xl font-black text-gray-950">{monthlyAppointments.length}</div>
-                <div className="mt-1 text-[11px] text-gray-500">Bu ay gelen toplam rezervasyon</div>
+              <div className="rounded-2xl border border-gray-150 bg-[#f8fafc] p-4 shadow-sm">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">
+                  {statsPeriod === 'all' ? 'Toplam Randevu' : statsPeriod === 'month' ? 'Aylık Randevu' : 'Yıllık Randevu'}
+                </div>
+                <div className="mt-3 text-3xl font-black text-gray-950">{displayedAppointments.length}</div>
+                <div className="mt-1 text-[11px] text-gray-500">
+                  {statsPeriod === 'all' ? 'Kayıtlı toplam rezervasyon' : statsPeriod === 'month' ? 'Bu ay gelen rezervasyonlar' : 'Bu yılki tüm rezervasyonlar'}
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-150 bg-[#fefaf5] p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#a06b3e]">Yıllık randevu</div>
-                <div className="mt-3 text-3xl font-black text-gray-950">{yearlyAppointments.length}</div>
-                <div className="mt-1 text-[11px] text-gray-500">Bu yıl toplam rezervasyon</div>
+              <div className="rounded-2xl border border-emerald-200 bg-[#f0fdf4] p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-700 font-bold">Yapılan / Tamamlanan İşler</div>
+                  <Check className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="mt-3 text-3xl font-black text-emerald-900">{displayedCompletedJobs}</div>
+                <div className="mt-1 text-[11px] text-emerald-700">
+                  {statsPeriod === 'all' ? 'Tamamlandı olarak işaretlenen tüm işlemler' : statsPeriod === 'month' ? 'Bu ay tamamlanan işlem sayısı' : 'Bu yıl tamamlanan işlem sayısı'}
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-150 bg-[#f0fdf4] p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-700">Yapılan işler</div>
-                <div className="mt-3 text-3xl font-black text-gray-950">{monthlyCompletedJobs}</div>
-                <div className="mt-1 text-[11px] text-gray-500">Bu ay tamamlanan işlem sayısı</div>
+              <div className="rounded-2xl border border-amber-200 bg-[#fff7ed] p-4 shadow-sm">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-800 font-bold">Toplam Kazanç</div>
+                <div className="mt-3 text-3xl font-black text-amber-950">₺{displayedEarnings.toLocaleString('tr-TR')}</div>
+                <div className="mt-1 text-[11px] text-amber-700">
+                  {statsPeriod === 'all' ? 'Onaylı ve tamamlanan tüm gelir' : statsPeriod === 'month' ? 'Bu ayın onaylı / tamamlanan geliri' : 'Bu yılın toplam cirosu'}
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-150 bg-[#fff7ed] p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-700">Kazanç</div>
-                <div className="mt-3 text-3xl font-black text-gray-950">₺{monthlyEarnings.toLocaleString('tr-TR')}</div>
-                <div className="mt-1 text-[11px] text-gray-500">Bu ay onaylı / tamamlanan gelir</div>
+              <div className="rounded-2xl border border-orange-200 bg-[#fffaf5] p-4 shadow-sm">
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#a06b3e]">Bekleyen / Aktif Randevu</div>
+                <div className="mt-3 text-3xl font-black text-gray-950">
+                  {displayedAppointments.filter(a => a.status === 'pending' || a.status === 'approved').length}
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">İşlem bekleyen veya onaylı randevular</div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-gray-150 bg-gray-50 p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">Yıllık tamamlanan iş sayısı</div>
-                <div className="mt-3 text-2xl font-black text-gray-950">{yearlyCompletedJobs}</div>
+            {/* Period Breakdown Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-gray-150 bg-gray-50/80 p-4">
+                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">Bu Ayın Özeti</div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-xl font-black text-gray-900">₺{monthlyEarnings.toLocaleString('tr-TR')}</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">{monthlyCompletedJobs} İşlem</span>
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">{monthlyAppointments.length} randevu kaydı</div>
               </div>
 
-              <div className="rounded-2xl border border-gray-150 bg-gray-50 p-4">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">Yıllık kazanç</div>
-                <div className="mt-3 text-2xl font-black text-gray-950">₺{yearlyEarnings.toLocaleString('tr-TR')}</div>
+              <div className="rounded-2xl border border-gray-150 bg-gray-50/80 p-4">
+                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500 font-bold">Bu Yılın Özeti</div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-xl font-black text-gray-900">₺{yearlyEarnings.toLocaleString('tr-TR')}</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">{yearlyCompletedJobs} İşlem</span>
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">{yearlyAppointments.length} randevu kaydı</div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200/70 bg-[#faf6f0] p-4">
+                <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#a06b3e] font-bold">Genel Toplam (Tüm Zamanlar)</div>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-xl font-black text-gray-900">₺{totalEarnings.toLocaleString('tr-TR')}</span>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full">{totalCompletedJobs} İşlem</span>
+                </div>
+                <div className="mt-1 text-[11px] text-gray-600">{appointments.length} toplam randevu</div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-gray-150 overflow-hidden">
-              <div className="bg-[#0f0f11] text-[#ebd6b8] px-4 py-3 text-[10px] font-mono uppercase tracking-[0.2em]">
-                İşlem Detay Tablosu
+            {/* Transaction Detail Table with Manual Price Entry */}
+            <div className="rounded-2xl border border-gray-150 overflow-hidden shadow-sm">
+              <div className="bg-[#0f0f11] text-[#ebd6b8] px-4 py-3 text-[10px] font-mono uppercase tracking-[0.2em] flex items-center justify-between">
+                <span>İşlem Detay Tablosu & Fiyatlandırma</span>
+                <span className="text-white/60 font-sans font-normal text-xs">Toplam {statsRows.length} kayıt</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-600">
                   <thead className="bg-gray-50 text-gray-700">
                     <tr>
                       <th className="p-3">Müşteri</th>
-                      <th className="p-3">Tarih</th>
+                      <th className="p-3">Tarih & Saat</th>
                       <th className="p-3">Hizmet</th>
+                      <th className="p-3">Stilist</th>
                       <th className="p-3">Durum</th>
-                      <th className="p-3">Fiyat</th>
+                      <th className="p-3 min-w-[200px]">İşlem Ücreti & Manuel Giriş</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
-                    {statsRows.map((appointment) => {
-                      const priceLabel = appointment.totalPrice > 0 ? `₺${appointment.totalPrice.toLocaleString('tr-TR')}` : 'Fiyatlandırılmadı';
-                      const isUnpriced = appointment.totalPrice === 0 || appointment.totalPrice == null;
+                    {statsRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-gray-400">
+                          Seçili dönemde randevu veya işlem kaydı bulunamadı.
+                        </td>
+                      </tr>
+                    ) : (
+                      statsRows.map((appointment) => {
+                        const priceLabel = appointment.totalPrice > 0 ? `₺${appointment.totalPrice.toLocaleString('tr-TR')}` : 'Fiyatlandırılmadı';
+                        const isUnpriced = appointment.totalPrice === 0 || appointment.totalPrice == null;
+                        const isEditingThis = editingPriceAppId === appointment.id;
 
-                      return (
-                        <tr key={appointment.id} className="hover:bg-gray-50/50">
-                          <td className="p-3">
-                            <div className="font-bold text-gray-900">{appointment.customerName}</div>
-                            <div className="font-mono text-[10px] text-[#a06b3e]">{appointment.trackingCode || appointment.id}</div>
-                          </td>
-                          <td className="p-3 font-mono text-[11px]">{appointment.date}</td>
-                          <td className="p-3 max-w-[260px]">
-                            <div className="flex flex-wrap gap-1">
-                              {appointment.services.map((service) => (
-                                <span key={service.id} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] text-gray-700">
-                                  {service.name}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase ${
-                              appointment.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                              appointment.status === 'approved' ? 'bg-amber-100 text-[#a06b3e]' :
-                              appointment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                              'bg-gray-100 text-gray-500'
-                            }`}>
-                              {getStatusLabel(appointment.status)}
-                            </span>
-                          </td>
-                          <td className="p-3 font-bold text-gray-900">
-                            <div>{priceLabel}</div>
-                            {isUnpriced && (
-                              <div className="mt-1 text-[10px] text-red-600 font-mono uppercase tracking-[0.12em]">Fiyat girilmedi</div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                        return (
+                          <tr key={appointment.id} className="hover:bg-gray-50/50">
+                            <td className="p-3">
+                              <div className="font-bold text-gray-900">{appointment.customerName}</div>
+                              <div className="font-mono text-[10px] text-[#a06b3e]">{appointment.trackingCode || appointment.id}</div>
+                              <div className="text-[10px] text-gray-400 font-mono">{appointment.customerPhone}</div>
+                            </td>
+                            <td className="p-3 font-mono text-[11px]">
+                              <div>{appointment.date}</div>
+                              <div className="text-[#dfa069] font-bold">{appointment.timeSlot}</div>
+                            </td>
+                            <td className="p-3 max-w-[240px]">
+                              <div className="flex flex-wrap gap-1">
+                                {appointment.services.map((service) => (
+                                  <span key={service.id} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] text-gray-700">
+                                    {service.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 font-bold text-gray-800 text-[11px]">
+                              {appointment.stylist?.name || 'Otomatik Atandı'}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase inline-block ${
+                                appointment.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                                appointment.status === 'approved' ? 'bg-amber-100 text-[#a06b3e]' :
+                                appointment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}>
+                                {getStatusLabel(appointment.status)}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              {isEditingThis ? (
+                                <div className="flex flex-col gap-1.5 p-2 bg-amber-50/80 border border-amber-200 rounded-xl">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs font-bold text-gray-700 font-mono">₺</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={manualPriceInput}
+                                      onChange={(e) => setManualPriceInput(e.target.value)}
+                                      placeholder="Tutar (TL)"
+                                      className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-xs font-mono font-bold bg-white outline-none focus:border-[#dfa069]"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const p = parseFloat(manualPriceInput.replace(/[^\d.,]/g, '').replace(',', '.'));
+                                        if (isNaN(p) || p < 0) {
+                                          alert('Lütfen geçerli bir tutar girin.');
+                                          return;
+                                        }
+                                        const updated = appointments.map((a) =>
+                                          a.id === appointment.id
+                                            ? { ...a, totalPrice: p, priceNote: manualPriceNote.trim() || undefined }
+                                            : a
+                                        );
+                                        onUpdateAppointments(updated);
+                                        setEditingPriceAppId(null);
+                                      }}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                                    >
+                                      Kaydet
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingPriceAppId(null)}
+                                      className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-[10px] font-bold cursor-pointer"
+                                    >
+                                      İptal
+                                    </button>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    value={manualPriceNote}
+                                    onChange={(e) => setManualPriceNote(e.target.value)}
+                                    placeholder="Fiyat notu (opsiyonel: Saç boyası + bakım)"
+                                    className="w-full border border-gray-200 rounded-lg px-2 py-0.5 text-[10px] bg-white outline-none"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <div className="font-mono font-bold text-gray-900 text-xs">{priceLabel}</div>
+                                    {appointment.priceNote && (
+                                      <div className="text-[10px] text-gray-500 italic">{appointment.priceNote}</div>
+                                    )}
+                                    {isUnpriced && (
+                                      <span className="inline-block mt-0.5 text-[10px] text-red-600 font-mono font-bold uppercase bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                                        Fiyat Girilmedi
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingPriceAppId(appointment.id);
+                                      setManualPriceInput(appointment.totalPrice ? String(appointment.totalPrice) : '');
+                                      setManualPriceNote(appointment.priceNote || '');
+                                    }}
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors whitespace-nowrap cursor-pointer ${
+                                      isUnpriced
+                                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                    }`}
+                                  >
+                                    {isUnpriced ? '+ Fiyat Gir' : 'Düzenle'}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -3751,33 +4056,80 @@ export default function AdminDashboard({
               </div>
             )}
 
-            {/* Top Bar for Stylists with Bulk Show/Hide Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-150">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[#a06b3e]" />
-                <span className="text-xs font-bold text-gray-800">
-                  {stylists.filter((s) => s.isVisible !== false).length} / {stylists.length} personel web sitesinde yayında
-                </span>
+            {/* Master Control: Booking Stylist Selection (Yoğunluk Koruması) */}
+            <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-[#fefbf6] to-[#faf5ee] p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-[#dfa069]" />
+                    <h4 className="font-sans font-black text-sm text-gray-950">
+                      Randevu Sihirbazında Personel Seçimi (Yoğunluk Koruması)
+                    </h4>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase ${
+                      webContent.bookingStylistSelectionEnabled !== false
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-900 border border-amber-300'
+                    }`}>
+                      {webContent.bookingStylistSelectionEnabled !== false ? 'Aktif (Müşteri Seçebilir)' : 'Gizli (Yoğunluk Modu)'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 max-w-2xl leading-relaxed">
+                    Yoğun günlerde personeller arasında iş yükü dengesizliği veya müşteri çakışması olmaması için randevuda usta seçimi adımını kapatabilirsiniz. Kapatıldığında müşteriye usta seçimi gösterilmez ve randevu doğrudan salon ekibine yazılır.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextState = webContent.bookingStylistSelectionEnabled === false ? true : false;
+                      onUpdateWebContent({
+                        ...webContent,
+                        bookingStylistSelectionEnabled: nextState
+                      });
+                    }}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer focus:outline-none ${
+                      webContent.bookingStylistSelectionEnabled !== false ? 'bg-[#dfa069]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                        webContent.bookingStylistSelectionEnabled !== false ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-bold text-gray-800">
+                    {webContent.bookingStylistSelectionEnabled !== false ? 'Açık' : 'Gizli'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSetAllStylistsVisibility(true)}
-                  className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-                  title="Tüm personelleri sitede görünür yapar"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Hepsini Göster</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSetAllStylistsVisibility(false)}
-                  className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-                  title="Tüm personelleri sitede gizler"
-                >
-                  <EyeOff className="h-3.5 w-3.5" />
-                  <span>Hepsini Gizle</span>
-                </button>
+
+              {/* Bulk action buttons for all stylists */}
+              <div className="pt-3 border-t border-amber-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-gray-600 font-medium">
+                  <Users className="h-4 w-4 text-[#a06b3e]" />
+                  <span>
+                    <strong>{stylists.filter((s) => s.isVisible !== false).length}</strong> / {stylists.length} personel randevuda ve sayfada görünür
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSetAllStylistsVisibility(true)}
+                    className="px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Tüm Personelleri Randevuda Göster</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetAllStylistsVisibility(false)}
+                    className="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                    <span>Tüm Personelleri Randevuda Gizle</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -3800,8 +4152,25 @@ export default function AdminDashboard({
                       <span>{sty.rating} ({sty.reviewsCount} Puan)</span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button onClick={() => handleToggleStylistVisibility(sty.id)} className="px-2 py-1 rounded-md text-[10px] font-bold border border-gray-200 text-gray-700 hover:bg-gray-50">
-                        {sty.isVisible === false ? 'Sayfada Gizli' : 'Sayfada Gösteriliyor'}
+                      <button
+                        onClick={() => handleToggleStylistVisibility(sty.id)}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-colors flex items-center gap-1.5 ${
+                          sty.isVisible === false
+                            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {sty.isVisible === false ? (
+                          <>
+                            <EyeOff className="h-3 w-3" />
+                            <span>Randevuda Gizli</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-3 w-3" />
+                            <span>Randevuda Gösteriliyor</span>
+                          </>
+                        )}
                       </button>
                       <button onClick={() => handleStartEditStylist(sty)} className="px-2 py-1 rounded-md text-[10px] font-bold border border-gray-200 text-gray-700 hover:bg-gray-50">Düzenle</button>
                       <button onClick={() => handleDeleteStylist(sty.id)} className="px-2 py-1 rounded-md text-[10px] font-bold border border-red-200 text-red-600 hover:bg-red-50">Sil</button>
@@ -3958,14 +4327,17 @@ export default function AdminDashboard({
                 {galleryItemMediaType === 'video' ? (
                   <>
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] text-gray-500 font-mono block">Video Dosyası veya Video URL (MP4, YouTube, Vimeo)</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] text-gray-700 font-mono font-bold block">Video Bağlantısı (Google Drive 4K, YouTube veya MP4)</label>
+                        <span className="text-[10px] text-[#a06b3e] font-bold">✨ Google Drive 4K Destekli</span>
+                      </div>
                       <div className="flex gap-2 items-center">
                         <input
                           type="text"
                           value={galleryItemVideoUrl}
                           onChange={(e) => setGalleryItemVideoUrl(e.target.value)}
-                          placeholder="https://www.youtube.com/watch?v=... veya bilgisayardan video yükleyin"
-                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
+                          placeholder="https://drive.google.com/file/d/... veya https://www.youtube.com/watch?v=..."
+                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs bg-white"
                         />
                         <label className="px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs shadow-sm">
                           <Upload className="h-4 w-4 text-[#dfa069]" />
@@ -3979,34 +4351,88 @@ export default function AdminDashboard({
                           />
                         </label>
                       </div>
-                      {galleryItemVideoUrl && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            ✓ Video hazır
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setGalleryItemVideoUrl('')}
-                            className="text-[11px] text-red-500 hover:underline"
-                          >
-                            Kaldır
-                          </button>
+
+                      {/* Google Drive or YouTube status badge & preview */}
+                      {galleryItemVideoUrl && (() => {
+                        const driveEmbed = getGoogleDriveEmbedUrl(galleryItemVideoUrl);
+                        const ytEmbed = getYoutubeEmbedUrl(galleryItemVideoUrl);
+                        const isDrive = Boolean(driveEmbed);
+                        const isYt = Boolean(ytEmbed);
+
+                        return (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex items-center gap-2">
+                              {isDrive && (
+                                <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                                  <Check className="h-3 w-3" /> ✓ Google Drive 4K Video Hazır
+                                </span>
+                              )}
+                              {isYt && (
+                                <span className="text-[11px] text-red-700 font-bold bg-red-50 px-2.5 py-0.5 rounded-full border border-red-300 flex items-center gap-1">
+                                  <Check className="h-3 w-3" /> ✓ YouTube Videosu Hazır
+                                </span>
+                              )}
+                              {!isDrive && !isYt && (
+                                <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                  ✓ Video dosyası hazır
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setGalleryItemVideoUrl('')}
+                                className="text-[11px] text-red-500 hover:underline cursor-pointer"
+                              >
+                                Kaldır
+                              </button>
+                            </div>
+
+                            {/* Real-time embed preview box for Drive or YouTube */}
+                            {isDrive && (
+                              <div className="p-3 bg-white border border-emerald-200 rounded-xl">
+                                <div className="text-[10px] text-emerald-800 font-mono font-bold mb-1.5">Canlı Google Drive Video Önizleme:</div>
+                                <iframe
+                                  src={driveEmbed}
+                                  title="Drive Preview"
+                                  className="w-full h-48 rounded-lg border border-gray-200 bg-black"
+                                  allow="autoplay; fullscreen"
+                                />
+                              </div>
+                            )}
+                            {isYt && (
+                              <div className="p-3 bg-white border border-red-200 rounded-xl">
+                                <div className="text-[10px] text-red-800 font-mono font-bold mb-1.5">Canlı YouTube Video Önizleme:</div>
+                                <iframe
+                                  src={ytEmbed}
+                                  title="YouTube Preview"
+                                  className="w-full h-48 rounded-lg border border-gray-200 bg-black"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      <div className="mt-2 p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl text-[11px] text-amber-900 space-y-1">
+                        <div className="font-bold flex items-center gap-1">
+                          <Sparkles className="h-3.5 w-3.5 text-[#dfa069]" />
+                          <span>4K / UHD Video Yükleme İpucu (Google Drive):</span>
                         </div>
-                      )}
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        {galleryMediaUploading ? 'Video yükleniyor, lütfen bekleyin...' : 'Bilgisayarınızdan video yükleyebilir veya YouTube bağlantısı yapıştırabilirsiniz (En fazla 15MB).'}
-                      </p>
+                        <p className="text-gray-700">
+                          Yüksek kaliteli 4K videolarınızı Google Drive'a yükleyin &gt; Dosyaya sağ tıklayıp <strong>Paylaş</strong> &gt; <strong>"Bağlantıya sahip olan herkes görüntüleyebilir"</strong> yapın ve linki buraya yapıştırın. Sunucu kotanızı harcamadan maksimum hız ve netlikte oynatılır.
+                        </p>
+                      </div>
                     </div>
 
                     <div className="sm:col-span-2">
-                      <label className="text-[10px] text-gray-500 font-mono block">Video Kapak Görseli (Küçük Resim - Thumbnail)</label>
+                      <label className="text-[10px] text-gray-500 font-mono block">Video Kapak Görseli (Küçük Resim - Thumbnail, Opsiyonel)</label>
                       <div className="flex gap-2 items-center">
                         <input
                           type="text"
                           value={galleryItemSrc}
                           onChange={(e) => setGalleryItemSrc(e.target.value)}
-                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs"
-                          placeholder="Kapak görseli URL adresi veya bilgisayardan görsel seçin (opsiyonel)"
+                          className="w-full border border-gray-200 rounded-xl p-2.5 text-xs bg-white"
+                          placeholder="Boş bırakılırsa Google Drive / YouTube kapak resmi otomatik alınır"
                         />
                         <label className="px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl cursor-pointer shrink-0 flex items-center gap-1.5 font-bold text-xs shadow-sm">
                           <Upload className="h-4 w-4 text-[#dfa069]" />
@@ -4031,7 +4457,7 @@ export default function AdminDashboard({
                           <button
                             type="button"
                             onClick={() => setGalleryItemSrc('')}
-                            className="text-[11px] text-red-500 hover:underline"
+                            className="text-[11px] text-red-500 hover:underline cursor-pointer"
                           >
                             Kaldır
                           </button>
@@ -4092,28 +4518,57 @@ export default function AdminDashboard({
 
             <div className="space-y-3">
               <h5 className="font-sans font-black text-sm text-gray-900">Mevcut Galeri İçerikleri</h5>
-              {(webContent.galleryItems || []).map((item, index) => (
-                <div key={`${item.title}-${index}`} className="flex items-center gap-3 border border-gray-200 rounded-xl p-3">
-                  {item.mediaType === 'video' ? (
-                    <video src={item.videoUrl || item.src} muted className="h-14 w-14 object-cover rounded-lg border border-gray-200" />
-                  ) : (
-                    <img
-                      src={item.src}
-                      alt={item.title}
-                      className="h-14 w-14 object-cover rounded-lg border border-gray-200"
-                      onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-sans font-black text-xs text-gray-900 truncate">{item.title}</p>
-                    <p className="text-[10px] text-gray-500 font-mono">{item.mediaType === 'video' ? 'Video' : 'Resim'}</p>
+              {(webContent.galleryItems || []).map((item, index) => {
+                const isDrive = Boolean(getGoogleDriveEmbedUrl(item.videoUrl || item.src));
+                const isYt = Boolean(getYoutubeEmbedUrl(item.videoUrl || item.src));
+                const driveThumb = getGoogleDriveThumbnailUrl(item.videoUrl || item.src);
+                const ytThumb = getYoutubeThumbnailUrl(item.videoUrl || item.src);
+                const displayThumb = item.src || driveThumb || ytThumb || '/bk-logo.jpg';
+
+                return (
+                  <div key={`${item.title}-${index}`} className="flex items-center gap-3 border border-gray-200 rounded-xl p-3 bg-white hover:border-[#dfa069]/50 transition-colors">
+                    <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-gray-200 bg-black shrink-0">
+                      {item.mediaType === 'video' && !isDrive && !isYt && item.videoUrl && !item.src ? (
+                        <video src={item.videoUrl} muted className="h-full w-full object-cover" />
+                      ) : (
+                        <img
+                          src={displayThumb}
+                          alt={item.title}
+                          className="h-full w-full object-cover"
+                          onError={(e) => { e.currentTarget.src = '/bk-logo.jpg'; }}
+                        />
+                      )}
+                      {item.mediaType === 'video' && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <Video className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-sans font-black text-xs text-gray-900 truncate">{item.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] text-gray-500 font-mono">
+                          {item.mediaType === 'video' ? 'Video' : 'Resim'}
+                        </span>
+                        {isDrive && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            Google Drive 4K
+                          </span>
+                        )}
+                        {isYt && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-100 text-red-800">
+                            YouTube
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => handleEditGalleryItem(index)} className="px-2.5 py-1.5 border border-gray-200 hover:border-gray-400 rounded-lg text-[10px] font-bold text-gray-700 cursor-pointer">Düzenle</button>
+                      <button type="button" onClick={() => handleDeleteGalleryItem(index)} className="px-2.5 py-1.5 border border-red-200 hover:bg-red-50 rounded-lg text-[10px] font-bold text-red-600 cursor-pointer">Sil</button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => handleEditGalleryItem(index)} className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-[10px] font-bold text-gray-700">Düzenle</button>
-                    <button type="button" onClick={() => handleDeleteGalleryItem(index)} className="px-2.5 py-1.5 border border-red-200 rounded-lg text-[10px] font-bold text-red-600">Sil</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

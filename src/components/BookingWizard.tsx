@@ -19,6 +19,7 @@ interface BookingWizardProps {
   initialSelectedService?: SalonService | null;
   onGoToMyAppointments?: () => void;
   kscanComingSoon?: boolean;
+  allowStylistSelection?: boolean;
 }
 
 export default function BookingWizard({
@@ -28,7 +29,8 @@ export default function BookingWizard({
   onAddAppointment,
   initialSelectedService = null,
   onGoToMyAppointments,
-  kscanComingSoon = true
+  kscanComingSoon = true,
+  allowStylistSelection = true
 }: BookingWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedServices, setSelectedServices] = useState<SalonService[]>(() => {
@@ -106,14 +108,42 @@ export default function BookingWizard({
   const totalPrice = selectedServices.reduce((acc, s) => acc + (s.price || 0), 0);
   const hasFlexiblePrice = selectedServices.some((s) => s.priceType === 'free' || s.customPriceText?.includes('SERBEST') || s.customPriceText?.includes('Dakika'));
 
-  const stepLabels = [
-    { num: 1, label: 'Hizmet Seçimi', icon: <Scissors className="h-4.5 w-4.5" /> },
-    { num: 2, label: 'Stylist / Uzman', icon: <UserPlus className="h-4.5 w-4.5" /> },
-    { num: 3, label: 'Tarih & Saat', icon: <Calendar className="h-4.5 w-4.5" /> },
-    { num: 4, label: 'Onay & Kod Üretimi', icon: <FileText className="h-4.5 w-4.5" /> },
-  ];
+  const visibleStylists = useMemo(() => {
+    return stylists.filter((s) => s.isVisible !== false);
+  }, [stylists]);
+
+  const isStylistStepEnabled = allowStylistSelection && visibleStylists.length > 0;
 
   const defaultSlots = slotOptions && slotOptions.length ? slotOptions : ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+
+  const defaultAutoStylist: Stylist = useMemo(() => ({
+    id: 'st-auto-team',
+    name: 'Salon Ekibi (İlk Müsait Uzman)',
+    role: 'Müsait Usta Stilist',
+    avatar: '/bk-logo.jpg',
+    rating: 5.0,
+    reviewsCount: 150,
+    specialities: ['Tüm Salon Hizmetleri'],
+    availableSlots: defaultSlots,
+    isVisible: true
+  }), [defaultSlots]);
+
+  const stepLabels = useMemo(() => {
+    if (isStylistStepEnabled) {
+      return [
+        { num: 1, internalStep: 1, label: 'Hizmet Seçimi', icon: <Scissors className="h-4.5 w-4.5" /> },
+        { num: 2, internalStep: 2, label: 'Stylist / Uzman', icon: <UserPlus className="h-4.5 w-4.5" /> },
+        { num: 3, internalStep: 3, label: 'Tarih & Saat', icon: <Calendar className="h-4.5 w-4.5" /> },
+        { num: 4, internalStep: 4, label: 'Onay & Kod Üretimi', icon: <FileText className="h-4.5 w-4.5" /> },
+      ];
+    }
+    return [
+      { num: 1, internalStep: 1, label: 'Hizmet Seçimi', icon: <Scissors className="h-4.5 w-4.5" /> },
+      { num: 2, internalStep: 3, label: 'Tarih & Saat', icon: <Calendar className="h-4.5 w-4.5" /> },
+      { num: 3, internalStep: 4, label: 'Onay & Kod Üretimi', icon: <FileText className="h-4.5 w-4.5" /> },
+    ];
+  }, [isStylistStepEnabled]);
+
   const activeSlots = selectedStylist && selectedStylist.availableSlots && selectedStylist.availableSlots.length ? selectedStylist.availableSlots : defaultSlots;
 
   const handleFinalizeBooking = async () => {
@@ -133,7 +163,7 @@ export default function BookingWizard({
       return;
     }
 
-    if (!selectedStylist) return;
+    const finalStylist = selectedStylist || defaultAutoStylist;
 
     setSubmitError(null);
     setIsSubmitting(true);
@@ -143,7 +173,7 @@ export default function BookingWizard({
         customerName: customerName.trim(),
         customerPhone: normalizedPhone,
         services: selectedServices,
-        stylist: selectedStylist,
+        stylist: finalStylist,
         date: selectedDate,
         timeSlot: selectedTimeSlot,
         totalPrice,
@@ -281,28 +311,31 @@ export default function BookingWizard({
         <>
           {/* Progress Wizard Tabs */}
           <div className="bg-[#131317] rounded-3xl p-4 border border-[#222226] max-w-4xl mx-auto mb-8 flex justify-between items-center flex-wrap gap-4" id="progress-tabs">
-            {stepLabels.map((sl) => (
-              <div key={sl.num} className="flex items-center space-x-3" id={`progress-step-${sl.num}`}>
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                  step >= sl.num
-                    ? 'bg-gradient-to-tr from-[#dfa069] to-[#cba358] text-[#0f0f11]'
-                    : 'bg-[#1c1c22] text-[#8e8d97] border border-[#222226]'
-                }`}>
-                  {sl.icon}
+            {stepLabels.map((sl, sIdx) => {
+              const isActive = step >= sl.internalStep;
+              return (
+                <div key={sl.num} className="flex items-center space-x-3" id={`progress-step-${sl.num}`}>
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                    isActive
+                      ? 'bg-gradient-to-tr from-[#dfa069] to-[#cba358] text-[#0f0f11]'
+                      : 'bg-[#1c1c22] text-[#8e8d97] border border-[#222226]'
+                  }`}>
+                    {sl.icon}
+                  </div>
+                  <div className="hidden sm:block flex flex-col">
+                    <span className={`text-[9px] font-mono tracking-wider uppercase ${isActive ? 'text-[#cba358]' : 'text-[#63626c]'}`}>
+                      Adım {sl.num}
+                    </span>
+                    <span className={`text-xs font-bold ${isActive ? 'text-white' : 'text-[#8e8d97]'}`}>
+                      {sl.label}
+                    </span>
+                  </div>
+                  {sIdx < stepLabels.length - 1 && (
+                    <ChevronRight className="h-4 w-4 hidden md:block text-[#2d2d35]" />
+                  )}
                 </div>
-                <div className="hidden sm:block flex flex-col">
-                  <span className={`text-[9px] font-mono tracking-wider uppercase ${step >= sl.num ? 'text-[#cba358]' : 'text-[#63626c]'}`}>
-                    Adım {sl.num}
-                  </span>
-                  <span className={`text-xs font-bold ${step >= sl.num ? 'text-white' : 'text-[#8e8d97]'}`}>
-                    {sl.label}
-                  </span>
-                </div>
-                {sl.num < 4 && (
-                  <ChevronRight className="h-4 w-4 hidden md:block text-[#2d2d35]" />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Core Split Form Viewport */}
@@ -476,7 +509,7 @@ export default function BookingWizard({
                           </div>
                         </div>
 
-                        {stylists.map((sty) => {
+                        {visibleStylists.map((sty) => {
                           const isSelected = selectedStylist?.id === sty.id;
                           return (
                             <div
@@ -679,7 +712,13 @@ export default function BookingWizard({
               <div className="mt-8 pt-4 border-t border-gray-150 flex items-center justify-between">
                 <button
                   id="booking-prev-btn"
-                  onClick={() => setStep((s) => Math.max(1, s - 1))}
+                  onClick={() => {
+                    if (step === 3 && !isStylistStepEnabled) {
+                      setStep(1);
+                    } else {
+                      setStep((s) => Math.max(1, s - 1));
+                    }
+                  }}
                   disabled={step === 1}
                   className="px-4.5 py-3 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 hover:text-gray-900 border border-gray-150 disabled:opacity-40 cursor-pointer flex items-center space-x-1.5 transition-all"
                 >
@@ -691,12 +730,21 @@ export default function BookingWizard({
                   <button
                     id="booking-next-btn"
                     onClick={() => {
-                      if (step === 1 && selectedServices.length === 0) {
-                        alert('Lütfen en az bir hizmet seçin.');
+                      if (step === 1) {
+                        if (selectedServices.length === 0) {
+                          alert('Lütfen en az bir hizmet seçin.');
+                          return;
+                        }
+                        if (!isStylistStepEnabled) {
+                          if (!selectedStylist) setSelectedStylist(defaultAutoStylist);
+                          setStep(3);
+                          return;
+                        }
+                        setStep(2);
                         return;
                       }
                       if (step === 2 && !selectedStylist) {
-                        alert('Lütfen bir uzman stilist seçimi yapın.');
+                        alert('Lütfen bir uzman stilist seçimi yapın veya "En Hızlı Randevu" seçeneğini işaretleyin.');
                         return;
                       }
                       if (step === 3 && (!selectedDate || !selectedTimeSlot)) {
@@ -786,7 +834,9 @@ export default function BookingWizard({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-[#8e8d97] text-xs italic">Uzman seçimi yapılmadı.</p>
+                  <p className="text-[#8e8d97] text-xs italic">
+                    {isStylistStepEnabled ? 'Uzman seçimi yapılmadı.' : 'Salon Ekibi (Otomatik Atanır)'}
+                  </p>
                 )}
               </div>
 

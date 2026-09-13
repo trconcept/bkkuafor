@@ -189,4 +189,5 @@ export interface WebContent {
   kscanComingSoon?: boolean; // K-SCAN Akıllı Teşhis Kamerası Yakında Sizlerle mi?
   kscanBadgeText?: string;
   showStylistsSection?: boolean; // Sanatçılarımız (Personel) Bölümü Gösterilsin mi?
+  bookingStylistSelectionEnabled?: boolean; // Randevu alırken müşteri personel seçimi yapabilsin mi? (Yoğunluk koruması)
 }

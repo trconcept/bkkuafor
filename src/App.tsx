@@ -306,6 +306,30 @@ export default function App() {
     }
   };
 
+  const getGoogleDriveFileId = (value?: string) => {
+    if (!value) return '';
+    try {
+      const match = value.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                    value.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) return match[1];
+    } catch {
+      return '';
+    }
+    return '';
+  };
+
+  const getGoogleDriveEmbedUrl = (value?: string) => {
+    const fileId = getGoogleDriveFileId(value);
+    if (!fileId) return '';
+    return `https://drive.google.com/file/d/${fileId}/preview`;
+  };
+
+  const getGoogleDriveThumbnailUrl = (value?: string) => {
+    const fileId = getGoogleDriveFileId(value);
+    if (!fileId) return '';
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+  };
+
   const [activeSection, setActiveSection] = useState<ActiveSection>('home');
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<SalonService | null>(null);
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
@@ -1477,6 +1501,7 @@ const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
                 initialSelectedService={selectedServiceForBooking}
                 onGoToMyAppointments={() => changeSectionWithUrl('my-appointments')}
                 kscanComingSoon={webContent.kscanComingSoon !== false}
+                allowStylistSelection={webContent.bookingStylistSelectionEnabled !== false}
               />
             </motion.div>
           )}
@@ -1573,7 +1598,9 @@ const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
                     if (galleryFilter === 'video' && !isVideo) return null;
 
                     const ytThumb = getYoutubeThumbnailUrl(item.videoUrl || item.src);
-                    const displayImg = ytThumb || item.src;
+                    const driveThumb = getGoogleDriveThumbnailUrl(item.videoUrl || item.src);
+                    const displayImg = ytThumb || driveThumb || item.src;
+                    const isDrive = Boolean(getGoogleDriveEmbedUrl(item.videoUrl || item.src));
 
                     return (
                       <div
@@ -1583,7 +1610,7 @@ const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
                       >
                         {/* Background Media */}
                         <div className="absolute inset-0 overflow-hidden">
-                          {isVideo && !ytThumb && item.videoUrl && !item.videoUrl.includes('youtube.com') && !item.videoUrl.includes('youtu.be') ? (
+                          {isVideo && !ytThumb && !isDrive && item.videoUrl && !item.videoUrl.includes('youtube.com') && !item.videoUrl.includes('youtu.be') ? (
                             <video
                               src={item.videoUrl || item.src}
                               className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
@@ -1717,6 +1744,7 @@ const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
                           if (!currentItem) return null;
 
                           const ytEmbedUrl = getYoutubeEmbedUrl(currentItem.videoUrl || currentItem.src, true);
+                          const driveEmbedUrl = getGoogleDriveEmbedUrl(currentItem.videoUrl || currentItem.src);
                           const isVid = currentItem.mediaType === 'video' || Boolean(currentItem.videoUrl);
 
                           if (ytEmbedUrl) {
@@ -1727,6 +1755,18 @@ const sanitizeBlogPosts = (posts: BlogPost[]): BlogPost[] => {
                                   title={currentItem.title}
                                   className="w-full h-full rounded-xl border-0 shadow-2xl"
                                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              </div>
+                            );
+                          } else if (driveEmbedUrl) {
+                            return (
+                              <div className="w-full h-full aspect-video max-h-[70vh] flex items-center justify-center">
+                                <iframe
+                                  src={driveEmbedUrl}
+                                  title={currentItem.title}
+                                  className="w-full h-full rounded-xl border-0 shadow-2xl"
+                                  allow="autoplay; fullscreen"
                                   allowFullScreen
                                 />
                               </div>
